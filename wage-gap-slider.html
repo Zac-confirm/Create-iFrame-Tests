@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guess the wage gap</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+   actualPercent is a PLACEHOLDER. Replace with the verified
+   figure from the FIFA source material before this goes live.
+   ============================================================ */
+const CONFIG = {
+  question: "What percentage of elite women footballers earn less than $20,000 a year?",
+  hint:     "Drag the slider to your guess, then reveal the answer.",
+  buttonLabel: "Reveal the answer",
+  resetLabel:  "Start over",
+
+  actualPercent: 50,   /* PLACEHOLDER \u2014 verify against source */
+
+  resultHeading: "{actual}%.",
+  resultBody:    "That\u2019s roughly {actual} in every 100 elite women players earning under $20,000 a year \u2014 while training and competing at the top of the sport.",
+  resultClose:   "Pay this low shapes everything else: whether a player can afford to rest an injury properly, turn down a risky return date, or say no at all.",
+
+  feedbackClose:  "You guessed {guess}%. That\u2019s close to the real figure.",
+  feedbackHigher: "You guessed {guess}%. The real figure is lower.",
+  feedbackLower:  "You guessed {guess}%. The real figure is higher."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:    #F6F5F2;
+  --ink:      #17242E;
+  --ink-soft: #4A5964;
+  --guess:    #2F6F7E;   /* the learner's mark */
+  --actual:   #A0522D;   /* the real figure */
+  --track:    #DEDCD5;
+  --focus:    #17242E;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 52rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(0.9rem, 2.5vw, 1.75rem) clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.85rem, 2.5vw, 1.4rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Question ---------- */
+
+.prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.prompt > legend {
+  padding: 0;
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+  max-width: 38ch;
+}
+
+.hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
+
+/* Once revealed, the result heading and feedback line already carry
+   the question — dropping it recovers height a stacked mobile
+   layout needs. */
+.revealed .prompt { display: none; }
+
+/* ---------- Slider ---------- */
+
+.reveal-row { display: grid; gap: clamp(0.9rem, 3vw, 1.75rem); }
+
+@media (min-width: 40rem) {
+  .revealed .reveal-row {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+  }
+}
+
+.slider-block { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.readout {
+  margin: 0;
+  font-size: clamp(1.6rem, 1.3rem + 1.4vw, 2.3rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.readout .unit { font-size: 0.55em; font-weight: 600; color: var(--ink-soft); }
+
+.track-wrap { position: relative; padding: 0 0.2rem; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-top: -0.55rem;
+  border-radius: 50%;
+  background: var(--guess);
+  border: 3px solid var(--paper);
+  box-shadow: 0 0 0 2px var(--guess);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--guess);
+  border: 3px solid var(--paper);
+  box-shadow: 0 0 0 2px var(--guess);
+}
+
+input[type="range"]:focus-visible { outline: none; }
+
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--guess), 0 0 0 5px var(--focus);
+}
+
+input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--guess), 0 0 0 5px var(--focus);
+}
+
+input[type="range"]:disabled { cursor: default; }
+input[type="range"]:disabled::-webkit-slider-thumb { opacity: 0; }
+input[type="range"]:disabled::-moz-range-thumb { opacity: 0; }
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  color: var(--ink-soft);
+  font-size: 0.85em;
+}
+
+/* Actual-value marker, placed on reveal. Positioned with a CSS
+   variable set from JS so it lines up with the track at any width. */
+.marker {
+  position: absolute;
+  top: 50%;
+  left: var(--pos, 50%);
+  transform: translate(-50%, -50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--paper);
+  opacity: 0;
+  transition: opacity 300ms ease 260ms, left 520ms cubic-bezier(.32,.72,.3,1);
+  pointer-events: none;
+}
+
+.marker.actual-marker { background: var(--actual); box-shadow: 0 0 0 2px var(--actual); }
+.marker.guess-marker  { background: var(--guess);  box-shadow: 0 0 0 2px var(--guess); }
+
+.revealed .marker { opacity: 1; }
+
+.marker.stack-high { top: 20%; }
+.marker.stack-low  { top: 80%; }
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.88em;
+  color: var(--ink-soft);
+}
+
+.legend-row span { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+.dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: 0 0 auto; }
+.dot.guess  { background: var(--guess); }
+.dot.actual { background: var(--actual); }
+
+/* ---------- Result ---------- */
+
+.result { opacity: 0; transform: translateY(0.5rem); }
+
+.revealed .result {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 420ms ease 360ms, transform 420ms ease 360ms;
+}
+
+.result:focus { outline: none; }
+
+.result:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 6px;
+}
+
+.result .feedback { margin: 0 0 0.6rem; color: var(--ink-soft); }
+
+.result h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 1.25rem + 1.1vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.result p { max-width: 46ch; margin: 0 0 0.6rem; }
+.result p:last-child { margin-bottom: 0; }
+
+/* ---------- Buttons ---------- */
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0.3rem;
+  padding: 0.6rem 1.2rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+}
+
+button.secondary { color: var(--ink); background: transparent; }
+button:hover { opacity: 0.88; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  input[type="range"]::-webkit-slider-runnable-track { background: #B9B9B0; }
+  input[type="range"]::-moz-range-track { background: #B9B9B0; }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question"></legend>
+    <p class="hint" id="hint"></p>
+  </fieldset>
+
+  <div class="reveal-row">
+    <div class="slider-block">
+      <p class="readout" aria-hidden="true"><span id="readoutNum">50</span><span class="unit">%</span></p>
+
+      <div class="track-wrap">
+        <input type="range" id="slider" min="0" max="100" step="1" value="50"
+               aria-labelledby="question" aria-describedby="hint">
+        <div class="marker guess-marker" id="guessMarker" aria-hidden="true"></div>
+        <div class="marker actual-marker" id="marker" aria-hidden="true"></div>
+      </div>
+
+      <div class="scale" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+
+      <div class="legend-row" id="legendRow" hidden>
+        <span><i class="dot guess"></i>Your guess</span>
+        <span><i class="dot actual"></i>Actual figure</span>
+      </div>
+    </div>
+
+    <section class="result" id="result" tabindex="-1" hidden aria-labelledby="resultHeading">
+      <p class="feedback" id="feedback"></p>
+      <h2 id="resultHeading"></h2>
+      <p id="resultBody"></p>
+      <p id="resultClose"></p>
+    </section>
+  </div>
+
+  <p class="sr-only" id="liveGuess" role="status"></p>
+
+  <div class="actions">
+    <button type="button" id="reveal"></button>
+    <button type="button" id="reset" class="secondary" hidden></button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const slider     = document.getElementById("slider");
+  const readoutNum = document.getElementById("readoutNum");
+  const liveGuess  = document.getElementById("liveGuess");
+  const marker      = document.getElementById("marker");
+  const guessMarker = document.getElementById("guessMarker");
+  const legendRow  = document.getElementById("legendRow");
+  const revealBtn  = document.getElementById("reveal");
+  const resetBtn   = document.getElementById("reset");
+  const result     = document.getElementById("result");
+  const hint       = document.getElementById("hint");
+
+  document.getElementById("question").textContent = CONFIG.question;
+  hint.textContent = CONFIG.hint;
+  revealBtn.textContent = CONFIG.buttonLabel;
+  resetBtn.textContent  = CONFIG.resetLabel;
+
+  let revealed = false;
+
+  function paint() {
+    const v = slider.value;
+    readoutNum.textContent = v;
+    slider.setAttribute("aria-valuetext", v + " percent");
+  }
+
+  slider.addEventListener("input", paint);
+
+  slider.addEventListener("change", function () {
+    liveGuess.textContent = "Guess set to " + slider.value + " percent.";
+  });
+
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+
+    const guess  = Number(slider.value);
+    const actual = CONFIG.actualPercent;
+    const diff   = Math.abs(guess - actual);
+
+    marker.style.setProperty("--pos", actual + "%");
+    guessMarker.style.setProperty("--pos", guess + "%");
+    /* If the two land close together, stack them so neither hides
+       the other. */
+    const overlapping = diff <= 4;
+    marker.classList.toggle("stack-low", overlapping);
+    guessMarker.classList.toggle("stack-high", overlapping);
+    slider.disabled = true;
+    legendRow.hidden = false;
+
+    let feedback;
+    if (diff <= 5) {
+      feedback = CONFIG.feedbackClose.replace("{guess}", guess);
+    } else if (guess > actual) {
+      feedback = CONFIG.feedbackHigher.replace("{guess}", guess);
+    } else {
+      feedback = CONFIG.feedbackLower.replace("{guess}", guess);
+    }
+
+    document.getElementById("feedback").textContent = feedback;
+    document.getElementById("resultHeading").textContent =
+      CONFIG.resultHeading.replace("{actual}", actual);
+    document.getElementById("resultBody").textContent =
+      CONFIG.resultBody.replace(/{actual}/g, actual);
+    document.getElementById("resultClose").textContent = CONFIG.resultClose;
+
+    document.body.classList.add("revealed");
+    hint.hidden = true;
+    result.hidden = false;
+    revealBtn.hidden = true;
+    resetBtn.hidden = false;
+
+    /* Land keyboard and screen-reader users on the outcome rather
+       than leaving them to hunt for what changed. */
+    result.focus();
+  }
+
+  function reset() {
+    revealed = false;
+    slider.disabled = false;
+    slider.value = 50;
+    paint();
+
+    marker.style.removeProperty("--pos");
+    guessMarker.style.removeProperty("--pos");
+    marker.classList.remove("stack-low");
+    guessMarker.classList.remove("stack-high");
+    legendRow.hidden = true;
+
+    document.body.classList.remove("revealed");
+    hint.hidden = false;
+    result.hidden = true;
+    resetBtn.hidden = true;
+    revealBtn.hidden = false;
+    liveGuess.textContent = "";
+    slider.focus();
+  }
+
+  revealBtn.addEventListener("click", reveal);
+  resetBtn.addEventListener("click", reset);
+
+  paint();
+})();
+</script>
+</body>
+</html>
