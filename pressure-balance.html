@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is this player carrying?</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+   Placeholder scenario and factors. Replace with the real ones
+   from the FIFA source material.
+   ============================================================ */
+const CONFIG = {
+  heading:  "What is this player carrying?",
+  scenario: "A 17-year-old academy player. Six months ago she moved countries to join the club. She trains twice a day, studies in the afternoons, and her contract decision is due in the spring.",
+  hint:     "Select anything you think applies. Nothing here is scored \u2014 the point is what stacks up, and what steadies it.",
+
+  pressureLegend:   "Pressures",
+  protectiveLegend: "Protective factors",
+
+  pressures: [
+    "Living away from family",
+    "Contract decision approaching",
+    "Recent injury",
+    "Language barrier",
+    "Online abuse after a poor result",
+    "Falling behind in schoolwork"
+  ],
+
+  protective: [
+    "A trusted adult at the club",
+    "Contact with family at home",
+    "Friendships outside football",
+    "A settled living arrangement",
+    "Knows how to ask for help",
+    "Interests beyond the game"
+  ],
+
+  /* Wording for each balance state. Never a score. */
+  stateEmpty:      "Nothing selected yet.",
+  stateHeavy:      "Weighted heavily toward pressure.",
+  stateTipping:    "Weighted toward pressure.",
+  stateEven:       "Pressures and protective factors roughly even.",
+  stateSteadier:   "Protective factors are carrying more of the weight.",
+
+  closing: "A player can carry a great deal and still look fine in training. Protective factors don\u2019t cancel pressure out \u2014 they change how much of it a player has to hold on their own."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:     #F6F5F2;
+  --ink:       #17242E;
+  --ink-soft:  #4A5964;
+  --pressure:  #A0522D;   /* the weight stacking up */
+  --protect:   #2F6F7E;   /* what steadies it */
+  --neutral:   #7E8891;
+  --hairline:  #D3D3CF;
+  --focus:     #17242E;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2.25rem) clamp(1rem, 4vw, 2rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+  max-width: 28ch;
+}
+
+.scenario {
+  margin: 0.85rem 0 0;
+  max-width: 58ch;
+}
+
+.hint {
+  margin: 0.7rem 0 0;
+  color: var(--ink-soft);
+  max-width: 58ch;
+}
+
+/* ---------- The balance ---------- */
+
+.balance {
+  margin: clamp(1.5rem, 5vw, 2.25rem) 0 0;
+  padding: clamp(1rem, 3vw, 1.5rem) 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.balance svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 11rem;
+  margin: 0 auto;
+}
+
+.beam {
+  transform-origin: 160px 54px;
+  transition: transform 520ms cubic-bezier(.32,.72,.3,1);
+}
+
+.beam-bar { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+
+.hang { transition: transform 520ms cubic-bezier(.32,.72,.3,1); }
+#hangPressure { transform-origin: 52px 54px; }
+#hangProtect  { transform-origin: 268px 54px; }
+
+.pan {
+  stroke-width: 3.5;
+  fill: none;
+  transition: fill 320ms ease, stroke 320ms ease;
+}
+
+.pan-pressure { stroke: var(--pressure); }
+.pan-protect  { stroke: var(--protect); }
+
+.pan.loaded.pan-pressure { fill: var(--pressure); }
+.pan.loaded.pan-protect  { fill: var(--protect); }
+
+.stand { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
+.fulcrum { fill: var(--ink); }
+
+.readout {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  font-weight: 600;
+  min-height: 1.55em;
+}
+
+.counts {
+  margin: 0.3rem 0 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Factor lists ---------- */
+
+.columns {
+  display: grid;
+  gap: clamp(1.25rem, 4vw, 2rem);
+  margin: clamp(1.5rem, 5vw, 2rem) 0 0;
+}
+
+@media (min-width: 38rem) {
+  .columns { grid-template-columns: 1fr 1fr; }
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0 0 0.65rem;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.group-pressure legend { color: var(--pressure); }
+.group-protect  legend { color: var(--protect); }
+
+.factor {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.6rem 0.6rem 0.6rem 0.55rem;
+  margin: 0 0 0.35rem;
+  border: 2px solid var(--hairline);
+  border-radius: 0.35rem;
+  background: transparent;
+  cursor: pointer;
+  min-height: 2.75rem;
+  line-height: 1.4;
+}
+
+.factor input {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.group-pressure .factor input { accent-color: var(--pressure); }
+.group-protect  .factor input { accent-color: var(--protect); }
+
+.group-pressure .factor:has(input:checked) { border-color: var(--pressure); }
+.group-protect  .factor:has(input:checked) { border-color: var(--protect); }
+
+.factor:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Closing + reset ---------- */
+
+.closing {
+  margin: clamp(1.5rem, 5vw, 2.25rem) 0 0;
+  padding-top: clamp(1.1rem, 3vw, 1.5rem);
+  border-top: 2px solid var(--ink);
+  max-width: 62ch;
+}
+
+.actions { margin: 1.4rem 0 0; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--ink);
+  border-radius: 0.3rem;
+  padding: 0.7rem 1.35rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+button:hover { opacity: 0.85; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .factor { border-color: var(--ink); }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <h1 id="heading"></h1>
+  <p class="scenario" id="scenario"></p>
+  <p class="hint" id="hint"></p>
+
+  <div class="balance">
+    <svg viewBox="0 0 320 130" role="img" aria-labelledby="balanceAlt">
+      <title id="balanceAlt">A balance scale. The left pan holds pressures, the right pan holds protective factors.</title>
+
+      <!-- stand -->
+      <path class="stand" d="M160 58 V108 M132 112 H188"/>
+      <circle class="fulcrum" cx="160" cy="54" r="7"/>
+
+      <!-- beam -->
+      <g class="beam" id="beam">
+        <path class="beam-bar" d="M52 54 H268"/>
+
+        <g class="hang" id="hangPressure">
+          <path class="beam-bar" d="M52 54 V70"/>
+          <circle class="pan pan-pressure" id="panPressure" cx="52" cy="83" r="13"/>
+        </g>
+
+        <g class="hang" id="hangProtect">
+          <path class="beam-bar" d="M268 54 V70"/>
+          <circle class="pan pan-protect" id="panProtect" cx="268" cy="83" r="13"/>
+        </g>
+      </g>
+    </svg>
+
+    <p class="readout" id="readout" role="status"></p>
+    <p class="counts" id="counts" aria-hidden="true"></p>
+  </div>
+
+  <div class="columns">
+    <fieldset class="group-pressure">
+      <legend id="legendPressure"></legend>
+      <div id="listPressure"></div>
+    </fieldset>
+
+    <fieldset class="group-protect">
+      <legend id="legendProtect"></legend>
+      <div id="listProtect"></div>
+    </fieldset>
+  </div>
+
+  <p class="closing" id="closing"></p>
+
+  <div class="actions">
+    <button type="button" id="reset">Clear all</button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  document.getElementById("heading").textContent  = CONFIG.heading;
+  document.getElementById("scenario").textContent = CONFIG.scenario;
+  document.getElementById("hint").textContent     = CONFIG.hint;
+  document.getElementById("closing").textContent  = CONFIG.closing;
+  document.getElementById("legendPressure").textContent = CONFIG.pressureLegend;
+  document.getElementById("legendProtect").textContent  = CONFIG.protectiveLegend;
+
+  const beam     = document.getElementById("beam");
+  const panP     = document.getElementById("panPressure");
+  const panR     = document.getElementById("panProtect");
+  const hangP    = document.getElementById("hangPressure");
+  const hangR    = document.getElementById("hangProtect");
+  const readout  = document.getElementById("readout");
+  const counts   = document.getElementById("counts");
+
+  function build(items, container, prefix) {
+    items.forEach(function (text, i) {
+      const label = document.createElement("label");
+      label.className = "factor";
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.id = prefix + i;
+
+      const span = document.createElement("span");
+      span.textContent = text;
+
+      label.append(input, span);
+      container.append(label);
+      input.addEventListener("change", update);
+    });
+  }
+
+  build(CONFIG.pressures,  document.getElementById("listPressure"), "p");
+  build(CONFIG.protective, document.getElementById("listProtect"),  "r");
+
+  function countChecked(sel) {
+    return document.querySelectorAll(sel + " input:checked").length;
+  }
+
+  function update() {
+    const p = countChecked("#listPressure");
+    const r = countChecked("#listProtect");
+    const diff = p - r;
+
+    /* Tip the beam. Capped, so it never bottoms out into
+       "this player is beyond help". */
+    const angle = Math.max(-16, Math.min(16, -diff * 4.5));
+    beam.style.transform = "rotate(" + angle + "deg)";
+
+    /* Counter-rotate so the pans hang vertically, as real ones do */
+    hangP.style.transform = "rotate(" + (-angle) + "deg)";
+    hangR.style.transform = "rotate(" + (-angle) + "deg)";
+
+    panP.classList.toggle("loaded", p > 0);
+    panR.classList.toggle("loaded", r > 0);
+
+    let state;
+    if (p === 0 && r === 0)   state = CONFIG.stateEmpty;
+    else if (diff >= 3)       state = CONFIG.stateHeavy;
+    else if (diff >= 1)       state = CONFIG.stateTipping;
+    else if (Math.abs(diff) <= 1) state = CONFIG.stateEven;
+    else                      state = CONFIG.stateSteadier;
+
+    readout.textContent = state;
+    counts.textContent = (p === 0 && r === 0)
+      ? ""
+      : p + " " + (p === 1 ? "pressure" : "pressures") +
+        " \u00b7 " + r + " protective";
+  }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    document.querySelectorAll(".factor input").forEach(function (i) {
+      i.checked = false;
+    });
+    update();
+    document.querySelector("#listPressure input").focus();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
