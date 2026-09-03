@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How many academy players reach professional football?</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only. No other changes needed.
+   ============================================================ */
+const CONFIG = {
+  question:    "Ten players join a top academy at 13. How many go on to play professional football at any level?",
+  hint:        "Choose a number from 1 to 10.",
+  buttonLabel: "Reveal the answer",
+  resetLabel:  "Start over",
+
+  answer: 1,          // how many of the ten actually make it
+  total: 10,          // number of figures shown
+
+  resultHeading: "One in ten.",
+  resultBody:    "Around one in ten players at LaLiga academies reached professional football at any level. The other nine were released \u2014 often between 16 and 18, at a point when football had been most of their life.",
+  resultClose:   "Those nine players don\u2019t disappear. Many of them stay in the game, and some of them are the people you work with.",
+
+  // Shown above the result. {guess} is replaced with the learner's number.
+  feedbackHigher: "You said {guess}. Most people guess higher than the real figure.",
+  feedbackEqual:  "You said {guess}. That matches the research.",
+  feedbackLower:  "You said {guess}. That\u2019s lower than most people guess."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap these for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:      #F6F5F2;   /* page background */
+  --ink:        #17242E;   /* body + headings */
+  --ink-soft:   #4A5964;   /* secondary text */
+  --guess:      #2F6F7E;   /* the learner's selection */
+  --released:   #7E8891;   /* the nine who don’t */
+  --neutral:    #7E8891;   /* a player, before you choose */
+  --focus:      #17242E;   /* focus ring */
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2.25rem) clamp(1rem, 4vw, 2rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Question ---------- */
+
+.prompt {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;   /* stops fieldset forcing horizontal overflow */
+}
+
+.prompt > legend {
+  padding: 0;
+  font-size: clamp(1.3rem, 1.1rem + 1.2vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  max-width: 32ch;
+}
+
+.hint {
+  margin: 0.7rem 0 0;
+  color: var(--ink-soft);
+}
+
+/* ---------- The ten figures ---------- */
+
+.squad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(0.35rem, 1.5vw, 0.75rem);
+  margin: clamp(1.5rem, 5vw, 2.25rem) 0 0;
+}
+
+@media (min-width: 34rem) {
+  .squad { grid-template-columns: repeat(10, 1fr); }
+}
+
+.figure {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 3rem;             /* comfortably over the 24px minimum */
+  padding: 0.5rem 0.15rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.figure input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.figure svg {
+  width: 100%;
+  height: auto;
+  max-height: 5.5rem;
+  display: block;
+}
+
+.figure .body {
+  fill: var(--neutral);
+  stroke: var(--neutral);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  transition: fill 220ms ease, stroke 220ms ease, opacity 220ms ease;
+}
+
+/* Selected: solid fill — a shape change, not just a colour change */
+.figure.in-guess .body {
+  fill: var(--guess);
+  stroke: var(--guess);
+}
+
+/* After the reveal: the one who stays is unchanged — solid, like everyone
+   started. Only the nine change, and that absence is the point. */
+.figure.released .body {
+  fill: none;
+  stroke: var(--released);
+}
+
+/* Focus ring lives on the label, driven by the hidden radio */
+.figure:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Reveal choreography */
+.squad.revealing .figure.released .body {
+  transition-delay: var(--stagger, 0ms);
+}
+
+/* ---------- Tally + actions ---------- */
+
+.tally {
+  margin: 1.1rem 0 0;
+  min-height: 1.55em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.actions {
+  margin: 1.4rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0.3rem;
+  padding: 0.7rem 1.35rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+button.secondary {
+  color: var(--ink);
+  background: transparent;
+}
+
+button:hover { opacity: 0.88; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button[hidden], .actions[hidden] { display: none; }
+
+/* ---------- Result ---------- */
+
+.result {
+  margin: clamp(1.75rem, 5vw, 2.5rem) 0 0;
+  padding-top: clamp(1.25rem, 4vw, 1.75rem);
+  border-top: 2px solid var(--ink);
+}
+
+.result:focus { outline: none; }
+
+.result:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 6px;
+}
+
+.result .feedback {
+  margin: 0 0 0.9rem;
+  color: var(--ink-soft);
+}
+
+.result h2 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.5rem, 1.2rem + 1.6vw, 2.3rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.result p + p { margin-bottom: 0; }
+
+.result .close {
+  margin-top: 1rem;
+  max-width: 58ch;
+}
+
+.result p { max-width: 62ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .figure.released .body { stroke-width: 4; }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question"></legend>
+    <p class="hint" id="hint"></p>
+    <div class="squad" id="squad"></div>
+  </fieldset>
+
+  <p class="tally" id="tally" role="status"></p>
+
+  <div class="actions" id="revealWrap">
+    <button type="button" id="reveal"></button>
+  </div>
+
+  <section class="result" id="result" tabindex="-1" hidden aria-labelledby="resultHeading">
+    <p class="feedback" id="feedback"></p>
+    <h2 id="resultHeading"></h2>
+    <p id="resultBody"></p>
+    <p class="close" id="resultClose"></p>
+  </section>
+
+  <div class="actions" id="resetWrap" hidden>
+    <button type="button" id="reset" class="secondary"></button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const squad    = document.getElementById("squad");
+  const tally    = document.getElementById("tally");
+  const revealBtn= document.getElementById("reveal");
+  const resetBtn = document.getElementById("reset");
+  const result   = document.getElementById("result");
+  const revealWrap = document.getElementById("revealWrap");
+  const resetWrap  = document.getElementById("resetWrap");
+
+  document.getElementById("question").textContent = CONFIG.question;
+  document.getElementById("hint").textContent     = CONFIG.hint;
+  revealBtn.textContent = CONFIG.buttonLabel;
+  resetBtn.textContent  = CONFIG.resetLabel;
+
+  let guess = null;
+  let revealed = false;
+
+  /* Build the figures as native radios — arrow-key navigation,
+     single tab stop and screen-reader semantics all come free. */
+  const figures = [];
+
+  for (let n = 1; n <= CONFIG.total; n++) {
+    const label = document.createElement("label");
+    label.className = "figure";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "guess";
+    input.value = String(n);
+
+    const text = document.createElement("span");
+    text.className = "sr-only";
+    text.textContent = n === 1 ? "1 player" : n + " players";
+
+    label.innerHTML =
+      '<svg viewBox="0 0 40 78" aria-hidden="true" focusable="false">' +
+        '<circle class="body" cx="20" cy="11" r="8.5"/>' +
+        '<path class="body" d="M20 23c-7.2 0-12.4 4.3-13.3 11.4L4.5 50h5.2l1.3-10.4V74h6.4V56.5h5.2V74h6.4V39.6L30.3 50h5.2l-2.2-15.6C32.4 27.3 27.2 23 20 23z"/>' +
+      '</svg>';
+
+    label.prepend(input);
+    label.append(text);
+    squad.append(label);
+    figures.push(label);
+
+    input.addEventListener("change", function () {
+      guess = n;
+      paintGuess();
+    });
+  }
+
+  function paintGuess() {
+    figures.forEach(function (fig, i) {
+      fig.classList.toggle("in-guess", guess !== null && i < guess);
+    });
+    tally.textContent = guess === null
+      ? ""
+      : "You think " + guess + (guess === 1 ? " player makes it." : " players make it.");
+  }
+
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+
+    squad.classList.add("revealing");
+
+    /* Which players remain is drawn at random each time. It could have
+       been any of them, and the visual should say so. */
+    const remain = new Set();
+    while (remain.size < CONFIG.answer) {
+      remain.add(Math.floor(Math.random() * CONFIG.total));
+    }
+
+    let step = 0;
+    figures.forEach(function (fig, i) {
+      fig.classList.remove("in-guess");
+      if (remain.has(i)) {
+        fig.classList.add("made");
+      } else {
+        fig.style.setProperty("--stagger", (step++ * 70) + "ms");
+        fig.classList.add("released");
+      }
+      fig.querySelector("input").disabled = true;
+    });
+
+    let feedback = "";
+    if (guess !== null) {
+      const key = guess > CONFIG.answer ? "feedbackHigher"
+                : guess < CONFIG.answer ? "feedbackLower"
+                : "feedbackEqual";
+      feedback = CONFIG[key].replace("{guess}", String(guess));
+    }
+
+    document.getElementById("feedback").textContent    = feedback;
+    document.getElementById("resultHeading").textContent = CONFIG.resultHeading;
+    document.getElementById("resultBody").textContent    = CONFIG.resultBody;
+    document.getElementById("resultClose").textContent   = CONFIG.resultClose;
+
+    tally.hidden = true;
+    result.hidden = false;
+    revealWrap.hidden = true;
+    resetWrap.hidden = false;
+
+    /* Move focus to the outcome so keyboard and screen-reader users
+       land on it rather than having to hunt for what changed. */
+    result.focus();
+  }
+
+  function reset() {
+    revealed = false;
+    guess = null;
+
+    squad.classList.remove("revealing");
+
+    figures.forEach(function (fig) {
+      fig.classList.remove("made", "released", "in-guess");
+      fig.style.removeProperty("--stagger");
+      const input = fig.querySelector("input");
+      input.disabled = false;
+      input.checked = false;
+    });
+
+    result.hidden = true;
+    resetWrap.hidden = true;
+    revealWrap.hidden = false;
+    tally.hidden = false;
+    tally.textContent = "";
+    figures[0].querySelector("input").focus();
+  }
+
+  revealBtn.addEventListener("click", reveal);
+  resetBtn.addEventListener("click", reset);
+})();
+</script>
+</body>
+</html>
