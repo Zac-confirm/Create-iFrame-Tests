@@ -65,7 +65,7 @@ const CONFIG = {
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; height: 100%; }
 
 body {
   background: var(--paper);
@@ -78,8 +78,14 @@ body {
 
 .stage {
   max-width: 48rem;
+  min-height: 100%;
   margin: 0 auto;
   padding: clamp(0.85rem, 2.5vw, 1.4rem) clamp(0.9rem, 3vw, 2rem);
+
+  /* Fill whatever height the iframe gives us. The balance takes up the
+     slack, so the component fits a tall frame or a short one. */
+  display: flex;
+  flex-direction: column;
 }
 
 .sr-only {
@@ -121,6 +127,12 @@ h1 {
   padding: clamp(0.7rem, 2vw, 1.1rem) 0;
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
+
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .balance svg {
@@ -128,6 +140,8 @@ h1 {
   width: 100%;
   height: auto;
   max-height: clamp(6.5rem, 26vw, 8rem);
+  min-height: 3.25rem;
+  flex: 1 1 auto;
   margin: 0 auto;
 }
 
