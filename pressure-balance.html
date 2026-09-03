@@ -13,28 +13,26 @@
    ============================================================ */
 const CONFIG = {
   heading:  "What is this player carrying?",
-  scenario: "A 17-year-old academy player. Six months ago she moved countries to join the club. She trains twice a day, studies in the afternoons, and her contract decision is due in the spring.",
-  hint:     "Select anything you think applies. Nothing here is scored \u2014 the point is what stacks up, and what steadies it.",
+  scenario: "17 years old. Moved countries six months ago. Trains twice a day, studies in the afternoons, contract decision due in spring.",
+  hint:     "Select anything that applies. Nothing is scored.",
 
   pressureLegend:   "Pressures",
   protectiveLegend: "Protective factors",
 
+  /* Keep these SHORT — two or three words. They sit in two columns
+     at every screen width, so long labels break the layout. */
   pressures: [
-    "Living away from family",
-    "Contract decision approaching",
+    "Living away from home",
+    "Contract decision due",
     "Recent injury",
-    "Language barrier",
-    "Online abuse after a poor result",
-    "Falling behind in schoolwork"
+    "Online abuse"
   ],
 
   protective: [
-    "A trusted adult at the club",
-    "Contact with family at home",
-    "Friendships outside football",
-    "A settled living arrangement",
-    "Knows how to ask for help",
-    "Interests beyond the game"
+    "A trusted adult",
+    "Family contact",
+    "Friends outside football",
+    "Somewhere settled to live"
   ],
 
   /* Wording for each balance state. Never a score. */
@@ -44,7 +42,7 @@ const CONFIG = {
   stateEven:       "Pressures and protective factors roughly even.",
   stateSteadier:   "Protective factors are carrying more of the weight.",
 
-  closing: "A player can carry a great deal and still look fine in training. Protective factors don\u2019t cancel pressure out \u2014 they change how much of it a player has to hold on their own."
+  closing: "A player can carry a great deal and still look fine in training. Protective factors don\u2019t remove pressure \u2014 they change how much of it she holds alone."
 };
 </script>
 
@@ -73,15 +71,15 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font);
-  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
-  line-height: 1.55;
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
   -webkit-text-size-adjust: 100%;
 }
 
 .stage {
   max-width: 48rem;
   margin: 0 auto;
-  padding: clamp(1rem, 4vw, 2.25rem) clamp(1rem, 4vw, 2rem);
+  padding: clamp(0.85rem, 2.5vw, 1.4rem) clamp(0.9rem, 3vw, 2rem);
 }
 
 .sr-only {
@@ -97,20 +95,21 @@ body {
 
 h1 {
   margin: 0;
-  font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.9rem);
+  font-size: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.18;
   letter-spacing: -0.012em;
   max-width: 28ch;
 }
 
 .scenario {
-  margin: 0.85rem 0 0;
+  margin: 0.55rem 0 0;
   max-width: 58ch;
 }
 
 .hint {
-  margin: 0.7rem 0 0;
+  margin: 0.35rem 0 0;
+  font-size: 0.9em;
   color: var(--ink-soft);
   max-width: 58ch;
 }
@@ -118,8 +117,8 @@ h1 {
 /* ---------- The balance ---------- */
 
 .balance {
-  margin: clamp(1.5rem, 5vw, 2.25rem) 0 0;
-  padding: clamp(1rem, 3vw, 1.5rem) 0;
+  margin: clamp(0.9rem, 3vw, 1.5rem) 0 0;
+  padding: clamp(0.7rem, 2vw, 1.1rem) 0;
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
 }
@@ -128,7 +127,7 @@ h1 {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 11rem;
+  max-height: clamp(6.5rem, 26vw, 8rem);
   margin: 0 auto;
 }
 
@@ -158,30 +157,30 @@ h1 {
 .stand { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
 .fulcrum { fill: var(--ink); }
 
-.readout {
-  margin: 0.9rem 0 0;
-  text-align: center;
-  font-weight: 600;
-  min-height: 1.55em;
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.9rem;
+  margin: 0.55rem 0 0;
 }
 
-.counts {
-  margin: 0.3rem 0 0;
+.readout {
+  margin: 0;
+  font-weight: 600;
   text-align: center;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
 }
+
+
 
 /* ---------- Factor lists ---------- */
 
 .columns {
   display: grid;
-  gap: clamp(1.25rem, 4vw, 2rem);
-  margin: clamp(1.5rem, 5vw, 2rem) 0 0;
-}
-
-@media (min-width: 38rem) {
-  .columns { grid-template-columns: 1fr 1fr; }
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.5rem, 2.5vw, 1.75rem);
+  margin: clamp(0.9rem, 3vw, 1.6rem) 0 0;
 }
 
 fieldset {
@@ -192,9 +191,9 @@ fieldset {
 }
 
 legend {
-  padding: 0 0 0.65rem;
+  padding: 0 0 0.45rem;
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1.05rem);
 }
 
 .group-pressure legend { color: var(--pressure); }
@@ -203,22 +202,23 @@ legend {
 .factor {
   display: flex;
   align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.6rem 0.6rem 0.6rem 0.55rem;
-  margin: 0 0 0.35rem;
+  gap: 0.5rem;
+  padding: 0.45rem 0.45rem 0.45rem 0.4rem;
+  margin: 0 0 0.3rem;
   border: 2px solid var(--hairline);
   border-radius: 0.35rem;
   background: transparent;
   cursor: pointer;
-  min-height: 2.75rem;
-  line-height: 1.4;
+  min-height: 2.25rem;   /* 36px — clears the 24px WCAG 2.2 minimum */
+  font-size: clamp(0.875rem, 0.83rem + 0.2vw, 1rem);
+  line-height: 1.3;
 }
 
 .factor input {
   flex: 0 0 auto;
-  width: 1.35rem;
-  height: 1.35rem;
-  margin: 0.1rem 0 0;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.15rem 0 0;
   accent-color: var(--ink);
   cursor: pointer;
 }
@@ -237,13 +237,14 @@ legend {
 /* ---------- Closing + reset ---------- */
 
 .closing {
-  margin: clamp(1.5rem, 5vw, 2.25rem) 0 0;
-  padding-top: clamp(1.1rem, 3vw, 1.5rem);
+  margin: clamp(0.8rem, 2.5vw, 1.1rem) 0 0;
+  padding-top: clamp(0.7rem, 2vw, 0.95rem);
+  font-size: 0.9em;
   border-top: 2px solid var(--ink);
   max-width: 62ch;
 }
 
-.actions { margin: 1.4rem 0 0; }
+
 
 button {
   font: inherit;
@@ -252,8 +253,9 @@ button {
   background: transparent;
   border: 2px solid var(--ink);
   border-radius: 0.3rem;
-  padding: 0.7rem 1.35rem;
-  min-height: 2.75rem;
+  padding: 0.35rem 0.8rem;
+  min-height: 2.25rem;
+  font-size: 0.85em;
   cursor: pointer;
 }
 
@@ -308,8 +310,10 @@ button:focus-visible {
       </g>
     </svg>
 
-    <p class="readout" id="readout" role="status"></p>
-    <p class="counts" id="counts" aria-hidden="true"></p>
+    <div class="statusbar">
+      <p class="readout" id="readout" role="status"></p>
+      <button type="button" id="reset">Clear all</button>
+    </div>
   </div>
 
   <div class="columns">
@@ -325,10 +329,6 @@ button:focus-visible {
   </div>
 
   <p class="closing" id="closing"></p>
-
-  <div class="actions">
-    <button type="button" id="reset">Clear all</button>
-  </div>
 
 </main>
 
@@ -349,7 +349,6 @@ button:focus-visible {
   const hangP    = document.getElementById("hangPressure");
   const hangR    = document.getElementById("hangProtect");
   const readout  = document.getElementById("readout");
-  const counts   = document.getElementById("counts");
 
   function build(items, container, prefix) {
     items.forEach(function (text, i) {
@@ -400,11 +399,10 @@ button:focus-visible {
     else if (Math.abs(diff) <= 1) state = CONFIG.stateEven;
     else                      state = CONFIG.stateSteadier;
 
-    readout.textContent = state;
-    counts.textContent = (p === 0 && r === 0)
-      ? ""
-      : p + " " + (p === 1 ? "pressure" : "pressures") +
-        " \u00b7 " + r + " protective";
+    readout.textContent = (p === 0 && r === 0)
+      ? state
+      : state + "  (" + p + " / " + r + ")";
+  
   }
 
   document.getElementById("reset").addEventListener("click", function () {
