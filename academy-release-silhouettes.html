@@ -94,6 +94,11 @@ body {
 
 .hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
 
+/* Once revealed, the result heading and feedback line already carry
+   the question — dropping it here recovers the height a stacked
+   mobile layout needs. */
+.revealed .prompt { display: none; }
+
 /* ---------- The ten figures ---------- */
 
 .squad {
