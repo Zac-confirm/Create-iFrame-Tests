@@ -18,7 +18,7 @@ const CONFIG = {
 
   /* Never displayed. Gives the ten radios an accessible name for
      screen readers, since the visible heading is outside the iframe. */
-  accessibleName: "How many of ten academy players go on to play professional football at any level? Choose a number from 1 to 10.",
+  accessibleName: "Ten players join a top academy at 13. How many go on to play professional football at any level? Select how many you think make it, then Submit.",
 
   buttonLabel: "Submit",
   resetLabel:  "Start over",
@@ -30,9 +30,6 @@ const CONFIG = {
   resultBody:    "Around one in ten players at LaLiga academies reached professional football at any level. The other nine were released, often between 16 and 18 \u2014 when football had been most of their life.",
   resultClose:   "Those nine don\u2019t disappear. Many stay in the game \u2014 some are the people you work with.",
 
-  feedbackHigher: "You said {guess}. Most people guess higher.",
-  feedbackEqual:  "You said {guess}. That matches the research.",
-  feedbackLower:  "You said {guess}. That\u2019s lower than most people guess."
 };
 </script>
 
@@ -267,8 +264,6 @@ button:focus-visible {
   outline-offset: 6px;
 }
 
-.result .feedback { margin: 0 0 0.6rem; color: var(--ink-soft); }
-
 .result h2 {
   margin: 0 0 0.5rem;
   font-size: clamp(1.35rem, 1.15rem + 0.9vw, 1.85rem);
@@ -306,7 +301,6 @@ button:focus-visible {
     <div class="squad" id="squad" role="radiogroup" aria-labelledby="question"></div>
 
     <section class="result" id="result" tabindex="-1" hidden aria-labelledby="resultHeading">
-      <p class="feedback" id="feedback"></p>
       <h2 id="resultHeading"></h2>
       <p id="resultBody"></p>
       <p id="resultClose"></p>
@@ -388,9 +382,7 @@ button:focus-visible {
     figures.forEach(function (fig, i) {
       fig.classList.toggle("in-guess", guess !== null && i < guess);
     });
-    tally.textContent = guess === null
-      ? ""
-      : "You think " + guess + (guess === 1 ? " player makes it." : " players make it.");
+    tally.textContent = guess === null ? "" : guess + " of " + CONFIG.total + " selected";
   }
 
   function reveal() {
@@ -419,15 +411,6 @@ button:focus-visible {
       fig.querySelector("input").disabled = true;
     });
 
-    let feedback = "";
-    if (guess !== null) {
-      const key = guess > CONFIG.answer ? "feedbackHigher"
-                : guess < CONFIG.answer ? "feedbackLower"
-                : "feedbackEqual";
-      feedback = CONFIG[key].replace("{guess}", String(guess));
-    }
-
-    document.getElementById("feedback").textContent      = feedback;
     document.getElementById("resultHeading").textContent = CONFIG.resultHeading;
     document.getElementById("resultBody").textContent    = CONFIG.resultBody;
     document.getElementById("resultClose").textContent   = CONFIG.resultClose;

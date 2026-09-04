@@ -20,7 +20,7 @@ const CONFIG = {
 
   /* Never displayed. Gives the slider an accessible name for screen
      readers, since the visible heading is outside the iframe. */
-  accessibleName: "What percentage of elite women footballers earn less than $20,000 a year? Set the slider to your guess, then submit.",
+  accessibleName: "What percentage of elite women footballers earn less than $20,000 a year? Move the slider to your guess, then Submit.",
 
   buttonLabel: "Submit",
   resetLabel:  "Start over",
@@ -31,9 +31,6 @@ const CONFIG = {
   resultBody:    "That\u2019s roughly {actual} in every 100 elite women players earning under $20,000 a year \u2014 while training and competing at the top of the sport.",
   resultClose:   "Pay this low shapes everything else: whether a player can afford to rest an injury properly, turn down a risky return date, or say no at all.",
 
-  feedbackClose:  "You guessed {guess}%. That\u2019s close to the real figure.",
-  feedbackHigher: "You guessed {guess}%. The real figure is lower.",
-  feedbackLower:  "You guessed {guess}%. The real figure is higher."
 };
 </script>
 
@@ -252,8 +249,6 @@ input[type="range"]:disabled::-moz-range-thumb { opacity: 0; }
   outline-offset: 6px;
 }
 
-.result .feedback { margin: 0 0 0.6rem; color: var(--ink-soft); }
-
 .result h2 {
   margin: 0 0 0.5rem;
   font-size: clamp(1.5rem, 1.25rem + 1.1vw, 2.1rem);
@@ -334,7 +329,6 @@ button:focus-visible {
     </div>
 
     <section class="result" id="result" tabindex="-1" hidden aria-labelledby="resultHeading">
-      <p class="feedback" id="feedback"></p>
       <h2 id="resultHeading"></h2>
       <p id="resultBody"></p>
       <p id="resultClose"></p>
@@ -412,16 +406,6 @@ button:focus-visible {
     slider.disabled = true;
     legendRow.hidden = false;
 
-    let feedback;
-    if (diff <= 5) {
-      feedback = CONFIG.feedbackClose.replace("{guess}", guess);
-    } else if (guess > actual) {
-      feedback = CONFIG.feedbackHigher.replace("{guess}", guess);
-    } else {
-      feedback = CONFIG.feedbackLower.replace("{guess}", guess);
-    }
-
-    document.getElementById("feedback").textContent = feedback;
     document.getElementById("resultHeading").textContent =
       CONFIG.resultHeading.replace("{actual}", actual);
     document.getElementById("resultBody").textContent =

@@ -21,7 +21,7 @@ const CONFIG = {
 
   /* Never displayed. Names the component for screen readers, since
      the visible heading is outside the iframe. */
-  accessibleName: "What is this player carrying? Select the pressures and protective factors that apply and watch the balance shift.",
+  accessibleName: "What is this player carrying? Select the pressures and protective factors that apply.",
 
   pressureLegend:   "Pressures",
   protectiveLegend: "Protective factors",
@@ -233,7 +233,6 @@ legend {
   background: transparent;
   cursor: pointer;
   min-height: 2.25rem;   /* 36px — clears the 24px WCAG 2.2 minimum */
-  font-size: clamp(0.875rem, 0.83rem + 0.2vw, 1rem);
   line-height: 1.3;
 }
 
@@ -276,9 +275,8 @@ button {
   background: transparent;
   border: 2px solid var(--ink);
   border-radius: 0.3rem;
-  padding: 0.35rem 0.8rem;
-  min-height: 2.25rem;
-  font-size: 0.85em;
+  padding: 0.6rem 1.2rem;
+  min-height: 2.6rem;
   cursor: pointer;
 }
 
@@ -439,7 +437,8 @@ button:focus-visible {
 
     readout.textContent = (p === 0 && r === 0)
       ? state
-      : state + "  (" + p + " / " + r + ")";
+      : state + "  " + p + (p === 1 ? " pressure" : " pressures") +
+        ", " + r + " protective.";
   
   }
 
