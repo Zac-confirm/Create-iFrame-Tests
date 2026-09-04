@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reflection</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+   ============================================================ */
+const CONFIG = {
+  /* Heading and instruction live in the Create text fields above the
+     iframe. Leave these empty to keep them there. */
+  question: "",
+  hint:     "",
+
+  /* Never displayed. Names the text box for screen readers, since the
+     visible heading is outside the iframe. */
+  accessibleName: "Your reflection. Type your answer, then download or copy it to keep.",
+
+  placeholder: "Type your answer here\u2026",
+
+  /* Heading written into the top of the downloaded file, so it still
+     makes sense weeks later. Leave empty to save only what was typed. */
+  fileIntro: "My reflection",
+  fileName:  "my-reflection.txt",
+
+  downloadLabel: "Download",
+  copyLabel:     "Copy",
+  clearLabel:    "Clear",
+
+  msgEmpty:     "Nothing written yet.",
+  /* Never claims success. A blocked download fails silently in the
+     browser rather than raising an error, so we cannot detect it. */
+  msgSaved:     "Saving \u201c{file}\u201d. If nothing downloaded, use Copy instead.",
+  msgCopied:    "Copied to your clipboard.",
+  msgCopyFail:  "Couldn\u2019t copy automatically. Select the text and copy it manually.",
+  msgBlocked:   "The download was blocked. Use Copy instead, or select the text and copy it manually.",
+
+  /* Shown under the box. Learners lose work if they navigate away. */
+  notice: "This isn\u2019t saved when you leave the page. Download or copy anything you want to keep."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:    #F6F5F2;
+  --field:    #FFFFFF;
+  --ink:      #17242E;
+  --ink-soft: #4A5964;
+  --accent:   #2F6F7E;
+  --hairline: #C8CBCB;
+  --focus:    #17242E;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: clamp(0.9rem, 2.5vw, 1.75rem) clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.7rem, 2vw, 1rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.visible-heading {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: 38ch;
+}
+
+.hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
+
+/* ---------- The box ---------- */
+
+/* Starts at three rows and grows with what's typed, up to whatever
+   room the frame allows. Past that it scrolls inside the box rather
+   than pushing the page out of the frame. */
+textarea {
+  min-height: 4.75rem;
+  width: 100%;
+  resize: none;
+  overflow-y: hidden;
+  transition: height 120ms ease;
+  font: inherit;
+  color: var(--ink);
+  background: var(--field);
+  border: 2px solid var(--hairline);
+  border-radius: 0.4rem;
+  padding: 0.75rem 0.85rem;
+}
+
+textarea::placeholder { color: var(--ink-soft); opacity: 1; }
+
+textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.88em;
+}
+
+.count { font-variant-numeric: tabular-nums; }
+
+.status { margin: 0; min-height: 1.45em; color: var(--ink-soft); font-size: 0.9em; }
+
+/* ---------- Buttons ---------- */
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0.3rem;
+  padding: 0.6rem 1.2rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+}
+
+button.secondary { color: var(--ink); background: transparent; }
+button:hover { opacity: 0.88; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+@media (prefers-contrast: more) {
+  textarea { border-color: var(--ink); }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
+  </fieldset>
+
+  <textarea id="entry" rows="3" aria-labelledby="question" aria-describedby="notice"></textarea>
+
+  <div class="meta">
+    <span class="notice" id="notice"></span>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="download"></button>
+    <button type="button" id="copy" class="secondary"></button>
+    <button type="button" id="clear" class="secondary"></button>
+  </div>
+
+  <p class="status" id="status" role="status"></p>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const entry  = document.getElementById("entry");
+  const status = document.getElementById("status");
+  const count  = document.getElementById("count");
+  const hint   = document.getElementById("hint");
+
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+  document.getElementById("notice").textContent   = CONFIG.notice;
+  entry.placeholder = CONFIG.placeholder;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) {
+    visibleHeading.textContent = CONFIG.question;
+    visibleHeading.hidden = false;
+  }
+  if (CONFIG.hint) {
+    hint.textContent = CONFIG.hint;
+    hint.hidden = false;
+  }
+
+  const dlBtn = document.getElementById("download");
+  const cpBtn = document.getElementById("copy");
+  const clBtn = document.getElementById("clear");
+  dlBtn.textContent = CONFIG.downloadLabel;
+  cpBtn.textContent = CONFIG.copyLabel;
+  clBtn.textContent = CONFIG.clearLabel;
+
+  function updateCount() {
+    const words = entry.value.trim() ? entry.value.trim().split(/\s+/).length : 0;
+    count.textContent = words === 1 ? "1 word" : words + " words";
+  }
+
+  /* Grow to fit the content, but never past the frame — otherwise the
+     page scrolls and the buttons drop out of view. Rather than adding
+     up the surrounding chrome, set the ideal height and subtract any
+     overflow it actually caused. */
+  const MIN_H = 76;
+
+  function autoGrow() {
+    entry.style.overflowY = "hidden";
+    entry.style.height = "auto";
+
+    const wanted = entry.scrollHeight;
+    entry.style.height = Math.max(MIN_H, wanted) + "px";
+
+    const spill = document.documentElement.scrollHeight - window.innerHeight;
+    if (spill > 0) {
+      const fitted = Math.max(MIN_H, wanted - spill);
+      entry.style.height = fitted + "px";
+      entry.style.overflowY = fitted < wanted ? "auto" : "hidden";
+    }
+  }
+
+  entry.addEventListener("input", function () {
+    updateCount();
+    autoGrow();
+  });
+
+  window.addEventListener("resize", autoGrow);
+
+  function say(msg) { status.textContent = msg; }
+
+  function contents() {
+    const body = entry.value.trim();
+    if (!body) return null;
+    return CONFIG.fileIntro
+      ? CONFIG.fileIntro + "\n\n" + body + "\n"
+      : body + "\n";
+  }
+
+  /* Downloads from inside a cross-origin iframe are not guaranteed —
+     some browsers block them, and iOS Safari is unreliable. Copy is
+     always offered as a fallback, and the text stays selectable. */
+  dlBtn.addEventListener("click", function () {
+    const text = contents();
+    if (!text) { say(CONFIG.msgEmpty); entry.focus(); return; }
+
+    try {
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = CONFIG.fileName;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 1000);
+      say(CONFIG.msgSaved.replace("{file}", CONFIG.fileName));
+    } catch (err) {
+      say(CONFIG.msgBlocked);
+    }
+  });
+
+  cpBtn.addEventListener("click", function () {
+    const text = contents();
+    if (!text) { say(CONFIG.msgEmpty); entry.focus(); return; }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { say(CONFIG.msgCopied); })
+        .catch(function () { legacyCopy(text); });
+    } else {
+      legacyCopy(text);
+    }
+  });
+
+  /* execCommand still works where the async Clipboard API is blocked
+     by iframe permissions policy. */
+  function legacyCopy(text) {
+    try {
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      tmp.setAttribute("readonly", "");
+      tmp.style.position = "absolute";
+      tmp.style.left = "-9999px";
+      document.body.appendChild(tmp);
+      tmp.select();
+      const ok = document.execCommand("copy");
+      tmp.remove();
+      say(ok ? CONFIG.msgCopied : CONFIG.msgCopyFail);
+    } catch (err) {
+      say(CONFIG.msgCopyFail);
+    }
+  }
+
+  clBtn.addEventListener("click", function () {
+    entry.value = "";
+    updateCount();
+    autoGrow();
+    say("");
+    entry.focus();
+  });
+
+  updateCount();
+  autoGrow();
+})();
+</script>
+</body>
+</html>
