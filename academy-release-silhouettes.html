@@ -10,9 +10,17 @@
    CONFIG — edit this block only.
    ============================================================ */
 const CONFIG = {
-  question:    "Ten players join a top academy at 13. How many go on to play professional football at any level?",
-  hint:        "Choose a number from 1 to 10.",
-  buttonLabel: "Reveal the answer",
+  /* Heading and hint now live in the Create text fields above the
+     iframe. Leave these empty to keep them there; put text in them
+     only if you want it inside the component instead. */
+  question: "",
+  hint:     "",
+
+  /* Never displayed. Gives the ten radios an accessible name for
+     screen readers, since the visible heading is outside the iframe. */
+  accessibleName: "How many of ten academy players go on to play professional football at any level? Choose a number from 1 to 10.",
+
+  buttonLabel: "Submit",
   resetLabel:  "Start over",
 
   answer: 1,
@@ -83,8 +91,8 @@ body {
 
 .prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
 
-.prompt > legend {
-  padding: 0;
+.visible-heading {
+  margin: 0;
   font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
   font-weight: 600;
   line-height: 1.2;
@@ -94,10 +102,10 @@ body {
 
 .hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
 
-/* Once revealed, the result heading and feedback line already carry
-   the question — dropping it here recovers the height a stacked
-   mobile layout needs. */
-.revealed .prompt { display: none; }
+/* Once revealed, any visible heading is redundant — the result carries
+   it. The hidden label stays, so the group keeps its accessible name. */
+.revealed .visible-heading,
+.revealed .hint { display: none; }
 
 /* ---------- The ten figures ---------- */
 
@@ -289,8 +297,9 @@ button:focus-visible {
 <main class="stage">
 
   <fieldset class="prompt">
-    <legend id="question"></legend>
-    <p class="hint" id="hint"></p>
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
   </fieldset>
 
   <div class="reveal-row">
@@ -324,8 +333,18 @@ button:focus-visible {
   const result    = document.getElementById("result");
   const hint      = document.getElementById("hint");
 
-  document.getElementById("question").textContent = CONFIG.question;
-  hint.textContent = CONFIG.hint;
+  /* Hidden label always present; visible heading only if configured. */
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) {
+    visibleHeading.textContent = CONFIG.question;
+    visibleHeading.hidden = false;
+  }
+  if (CONFIG.hint) {
+    hint.textContent = CONFIG.hint;
+    hint.hidden = false;
+  }
   revealBtn.textContent = CONFIG.buttonLabel;
   resetBtn.textContent  = CONFIG.resetLabel;
 
@@ -413,7 +432,6 @@ button:focus-visible {
     document.getElementById("resultBody").textContent    = CONFIG.resultBody;
     document.getElementById("resultClose").textContent   = CONFIG.resultClose;
 
-    hint.hidden   = true;
     tally.hidden  = true;
     result.hidden = false;
     revealBtn.hidden = true;
@@ -442,7 +460,7 @@ button:focus-visible {
     result.hidden = true;
     resetBtn.hidden = true;
     revealBtn.hidden = false;
-    hint.hidden  = false;
+    if (CONFIG.hint) hint.hidden = false;
     tally.hidden = false;
     tally.textContent = "";
     figures[0].querySelector("input").focus();

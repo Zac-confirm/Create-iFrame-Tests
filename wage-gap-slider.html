@@ -12,9 +12,17 @@
    figure from the FIFA source material before this goes live.
    ============================================================ */
 const CONFIG = {
-  question: "What percentage of elite women footballers earn less than $20,000 a year?",
-  hint:     "Drag the slider to your guess, then reveal the answer.",
-  buttonLabel: "Reveal the answer",
+  /* Heading and hint now live in the Create text fields above the
+     iframe. Leave these empty to keep them there; put text in them
+     only if you want it inside the component instead. */
+  question: "",
+  hint:     "",
+
+  /* Never displayed. Gives the slider an accessible name for screen
+     readers, since the visible heading is outside the iframe. */
+  accessibleName: "What percentage of elite women footballers earn less than $20,000 a year? Set the slider to your guess, then submit.",
+
+  buttonLabel: "Submit",
   resetLabel:  "Start over",
 
   actualPercent: 50,   /* PLACEHOLDER \u2014 verify against source */
@@ -84,8 +92,8 @@ body {
 
 .prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
 
-.prompt > legend {
-  padding: 0;
+.visible-heading {
+  margin: 0;
   font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
   font-weight: 600;
   line-height: 1.22;
@@ -95,10 +103,10 @@ body {
 
 .hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
 
-/* Once revealed, the result heading and feedback line already carry
-   the question — dropping it recovers height a stacked mobile
-   layout needs. */
-.revealed .prompt { display: none; }
+/* Once revealed, any visible heading is redundant — the result carries
+   it. The hidden label stays, so the slider keeps its accessible name. */
+.revealed .visible-heading,
+.revealed .hint { display: none; }
 
 /* ---------- Slider ---------- */
 
@@ -301,8 +309,9 @@ button:focus-visible {
 <main class="stage">
 
   <fieldset class="prompt">
-    <legend id="question"></legend>
-    <p class="hint" id="hint"></p>
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
   </fieldset>
 
   <div class="reveal-row">
@@ -311,7 +320,7 @@ button:focus-visible {
 
       <div class="track-wrap">
         <input type="range" id="slider" min="0" max="100" step="1" value="50"
-               aria-labelledby="question" aria-describedby="hint">
+               aria-labelledby="question">
         <div class="marker guess-marker" id="guessMarker" aria-hidden="true"></div>
         <div class="marker actual-marker" id="marker" aria-hidden="true"></div>
       </div>
@@ -356,8 +365,18 @@ button:focus-visible {
   const result     = document.getElementById("result");
   const hint       = document.getElementById("hint");
 
-  document.getElementById("question").textContent = CONFIG.question;
-  hint.textContent = CONFIG.hint;
+  /* Hidden label always present; visible heading only if configured. */
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) {
+    visibleHeading.textContent = CONFIG.question;
+    visibleHeading.hidden = false;
+  }
+  if (CONFIG.hint) {
+    hint.textContent = CONFIG.hint;
+    hint.hidden = false;
+  }
   revealBtn.textContent = CONFIG.buttonLabel;
   resetBtn.textContent  = CONFIG.resetLabel;
 
@@ -410,7 +429,6 @@ button:focus-visible {
     document.getElementById("resultClose").textContent = CONFIG.resultClose;
 
     document.body.classList.add("revealed");
-    hint.hidden = true;
     result.hidden = false;
     revealBtn.hidden = true;
     resetBtn.hidden = false;
@@ -433,7 +451,7 @@ button:focus-visible {
     legendRow.hidden = true;
 
     document.body.classList.remove("revealed");
-    hint.hidden = false;
+    if (CONFIG.hint) hint.hidden = false;
     result.hidden = true;
     resetBtn.hidden = true;
     revealBtn.hidden = false;

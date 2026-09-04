@@ -12,9 +12,16 @@
    from the FIFA source material.
    ============================================================ */
 const CONFIG = {
-  heading:  "What is this player carrying?",
-  scenario: "17 years old. Moved countries six months ago. Trains twice a day, studies in the afternoons, contract decision due in spring.",
-  hint:     "Select anything that applies. Nothing is scored.",
+  /* Heading, scenario and hint now live in the Create text fields
+     above the iframe. Leave these empty to keep them there; put text
+     in them only if you want it inside the component instead. */
+  heading:  "",
+  scenario: "",
+  hint:     "",
+
+  /* Never displayed. Names the component for screen readers, since
+     the visible heading is outside the iframe. */
+  accessibleName: "What is this player carrying? Select the pressures and protective factors that apply and watch the balance shift.",
 
   pressureLegend:   "Pressures",
   protectiveLegend: "Protective factors",
@@ -42,7 +49,10 @@ const CONFIG = {
   stateEven:       "Pressures and protective factors roughly even.",
   stateSteadier:   "Protective factors are carrying more of the weight.",
 
-  closing: "A player can carry a great deal and still look fine in training. Protective factors don\u2019t remove pressure \u2014 they change how much of it she holds alone."
+  /* Closing text now lives in the Create text field below the iframe.
+     Leave empty to keep it there; add text only if you want it inside
+     the component instead. */
+  closing: ""
 };
 </script>
 
@@ -99,7 +109,7 @@ body {
   border: 0;
 }
 
-h1 {
+.heading {
   margin: 0;
   font-size: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
   font-weight: 600;
@@ -123,9 +133,8 @@ h1 {
 /* ---------- The balance ---------- */
 
 .balance {
-  margin: clamp(0.9rem, 3vw, 1.5rem) 0 0;
-  padding: clamp(0.7rem, 2vw, 1.1rem) 0;
-  border-top: 1px solid var(--hairline);
+  margin: 0;
+  padding: 0 0 clamp(0.7rem, 2vw, 1.1rem);
   border-bottom: 1px solid var(--hairline);
 
   flex: 1 1 auto;
@@ -296,9 +305,10 @@ button:focus-visible {
 <body>
 <main class="stage">
 
-  <h1 id="heading"></h1>
-  <p class="scenario" id="scenario"></p>
-  <p class="hint" id="hint"></p>
+  <h1 id="srHeading" class="sr-only"></h1>
+  <h2 class="heading" id="heading" hidden></h2>
+  <p class="scenario" id="scenario" hidden></p>
+  <p class="hint" id="hint" hidden></p>
 
   <div class="balance">
     <svg viewBox="0 0 320 130" role="img" aria-labelledby="balanceAlt">
@@ -342,7 +352,7 @@ button:focus-visible {
     </fieldset>
   </div>
 
-  <p class="closing" id="closing"></p>
+  <p class="closing" id="closing" hidden></p>
 
 </main>
 
@@ -350,10 +360,24 @@ button:focus-visible {
 (function () {
   "use strict";
 
-  document.getElementById("heading").textContent  = CONFIG.heading;
-  document.getElementById("scenario").textContent = CONFIG.scenario;
-  document.getElementById("hint").textContent     = CONFIG.hint;
-  document.getElementById("closing").textContent  = CONFIG.closing;
+  /* Hidden name always present; visible text only if configured. */
+  document.getElementById("srHeading").textContent = CONFIG.accessibleName;
+
+  [["heading", CONFIG.heading],
+   ["scenario", CONFIG.scenario],
+   ["hint", CONFIG.hint]].forEach(function (pair) {
+    if (pair[1]) {
+      const el = document.getElementById(pair[0]);
+      el.textContent = pair[1];
+      el.hidden = false;
+    }
+  });
+
+  if (CONFIG.closing) {
+    const closingEl = document.getElementById("closing");
+    closingEl.textContent = CONFIG.closing;
+    closingEl.hidden = false;
+  }
   document.getElementById("legendPressure").textContent = CONFIG.pressureLegend;
   document.getElementById("legendProtect").textContent  = CONFIG.protectiveLegend;
 
