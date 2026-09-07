@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confidence check</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+
+   Use the SAME file twice. Set mode to "start" on the opening page
+   and "end" on the closing page. The end version marks where the
+   learner started and tells them how they've moved.
+   ============================================================ */
+const CONFIG = {
+  mode: "start",          /* "start" or "end" */
+
+  question: "",           /* heading lives in the Create text field above */
+  hint:     "",
+
+  accessibleName: "How confident do you feel in your ability to support someone experiencing a mental health concern or emotional distress? Five levels, from not at all confident to very confident.",
+
+  levels: [
+    "Not at all confident",
+    "Slightly confident",
+    "Moderately confident",
+    "Confident",
+    "Very confident"
+  ],
+
+  startPrompt: "Drag the marker, or use the arrow keys.",
+
+  buttonLabel: "Submit",
+  changeLabel: "Change my answer",
+  msgRecorded: "Thanks, that\u2019s noted.",
+
+  endUp:     "You started this course at \u201c{before}\u201d. You\u2019re now at \u201c{now}\u201d.",
+  endSame:   "You started this course at \u201c{before}\u201d and you\u2019re still there. Worth sitting with \u2014 confidence tends to shift after you\u2019ve used something, not after you\u2019ve read about it.",
+  endDown:   "You started at \u201c{before}\u201d and you\u2019re now at \u201c{now}\u201d. Learning what this actually asks of you can make you less sure. That isn\u2019t a step backwards.",
+  endNoData: "No earlier answer found on this device, so there\u2019s nothing to compare against this time."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:    #F6F5F2;
+  --ink:      #17242E;
+  --ink-soft: #4A5964;
+  --sel:      #2F6F7E;   /* the learner's level */
+  --track:    #DEDCD5;
+  --before:   #A0522D;   /* where they started */
+  --focus:    #17242E;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  /* Stops the page panning while dragging on touch */
+  touch-action: manipulation;
+}
+
+.stage {
+  max-width: 52rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(0.9rem, 2.5vw, 1.75rem) clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.75rem, 2.2vw, 1.1rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+
+.prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.visible-heading {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 600; line-height: 1.2; letter-spacing: -0.01em;
+  max-width: 38ch;
+}
+
+.hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
+
+/* ---------- The track ---------- */
+
+.rail {
+  position: relative;
+  padding: 1.6rem 1.55rem 0.4rem;   /* room for the marker and its ring at both ends */
+  touch-action: none;   /* the drag belongs to the marker, not the page */
+  cursor: pointer;
+}
+
+.line {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+/* The filled part, up to wherever the marker is */
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--sel);
+  opacity: 0;
+  transition: width 260ms cubic-bezier(.34,.62,.28,1), opacity 200ms ease;
+}
+.set .fill { opacity: 1; }
+
+/* Notches, so it's clear there are five stops rather than a free scale */
+.notch {
+  position: absolute;
+  top: 50%;
+  width: 2px; height: 0.8rem;
+  background: rgba(23,36,46,0.28);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+}
+
+/* Where they started */
+.was-dot {
+  position: absolute;
+  top: 50%;
+  width: 0.6rem; height: 0.6rem;
+  border-radius: 50%;
+  background: var(--before);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+
+/* The marker they drag */
+.marker {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 2rem; height: 2rem;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--sel);
+  box-shadow: 0 0 0 4px var(--paper), 0 0 0 6px var(--sel);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: left 240ms cubic-bezier(.34,.62,.28,1),
+              opacity 200ms ease, transform 160ms ease;
+  opacity: 0.45;
+}
+
+.set .marker { opacity: 1; }
+.marker:active { cursor: grabbing; }
+.marker.dragging { transition: none; transform: translate(-50%, -50%) scale(1.12); }
+
+.marker:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 6px;
+}
+
+.captions { display: flex; margin-top: 0.7rem; padding: 0 1.55rem; }
+
+.captions span {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.76em;
+  line-height: 1.25;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 36rem) { .captions { display: none; } }
+
+.chosen {
+  margin: 0;
+  min-height: 1.55em;
+  font-weight: 600;
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.3rem);
+}
+
+.legend {
+  margin: 0; font-size: 0.85em; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.legend i {
+  width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  background: var(--before); flex: 0 0 auto;
+}
+
+.result { margin: 0; max-width: 54ch; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+button.action {
+  font: inherit; font-weight: 600;
+  color: var(--paper); background: var(--ink);
+  border: 2px solid var(--ink); border-radius: 0.3rem;
+  padding: 0.6rem 1.2rem; min-height: 2.6rem; cursor: pointer;
+}
+
+button.action.secondary { color: var(--ink); background: transparent; }
+button.action:hover { opacity: 0.88; }
+button.action:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+@media (prefers-contrast: more) {
+  .line { background: #B9B9B0; }
+  .notch { background: var(--ink); }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
+  </fieldset>
+
+  <div>
+    <div class="rail" id="rail">
+      <div class="line" id="line">
+        <span class="fill" id="fill"></span>
+
+        <!-- Lives inside the line so it shares a coordinate space with
+             the notches and the fill -->
+        <button type="button" class="marker" id="marker"
+                role="slider"
+                aria-labelledby="question"
+                aria-valuemin="1" aria-valuemax="5" aria-valuenow="3"
+                aria-valuetext="Not set. Drag the marker or use the arrow keys."></button>
+      </div>
+    </div>
+
+    <div class="captions" id="captions" aria-hidden="true"></div>
+  </div>
+
+  <p class="chosen" id="chosen" role="status"></p>
+  <p class="legend" id="legend" hidden><i></i><span>Where you started</span></p>
+  <p class="result" id="result"></p>
+
+  <div class="actions">
+    <button type="button" class="action" id="submit"></button>
+    <button type="button" class="action secondary" id="change" hidden></button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const KEY = "fifa-confidence-v1";
+
+  const rail     = document.getElementById("rail");
+  const line     = document.getElementById("line");
+  const fill     = document.getElementById("fill");
+  const marker   = document.getElementById("marker");
+  const capsEl   = document.getElementById("captions");
+  const chosenEl = document.getElementById("chosen");
+  const resultEl = document.getElementById("result");
+  const legendEl = document.getElementById("legend");
+  const submitBtn= document.getElementById("submit");
+  const changeBtn= document.getElementById("change");
+  const hint     = document.getElementById("hint");
+
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+  submitBtn.textContent = CONFIG.buttonLabel;
+  changeBtn.textContent = CONFIG.changeLabel;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) { visibleHeading.textContent = CONFIG.question; visibleHeading.hidden = false; }
+  if (CONFIG.hint) { hint.textContent = CONFIG.hint; hint.hidden = false; }
+
+  const n = CONFIG.levels.length;
+  const MID = Math.ceil(n / 2);
+
+  CONFIG.levels.forEach(function (label) {
+    const s = document.createElement("span");
+    s.textContent = label;
+    capsEl.append(s);
+
+    const notch = document.createElement("span");
+    notch.className = "notch";
+    line.append(notch);
+  });
+
+  const notches = line.querySelectorAll(".notch");
+  function pct(level) { return ((level - 1) / (n - 1)) * 100; }
+  notches.forEach(function (el, i) { el.style.left = pct(i + 1) + "%"; });
+
+  function readEarlier() {
+    try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; }
+    catch (e) { return null; }
+  }
+  function writeAnswer(o) {
+    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+  }
+
+  const earlier = CONFIG.mode === "end" ? readEarlier() : null;
+  if (earlier && earlier.level) {
+    const dot = document.createElement("span");
+    dot.className = "was-dot";
+    dot.style.left = pct(earlier.level) + "%";
+    line.append(dot);
+    legendEl.hidden = false;
+  }
+
+  let level = MID;      /* where the marker sits before they touch it */
+  let isSet = false;    /* whether they've actually chosen */
+  let locked = false;
+
+  function place() {
+    const p = pct(level);
+    marker.style.left = p + "%";
+    fill.style.width = p + "%";
+    marker.setAttribute("aria-valuenow", String(level));
+
+    if (isSet) {
+      rail.parentElement.classList.add("set");
+      marker.setAttribute("aria-valuetext", CONFIG.levels[level - 1]);
+      chosenEl.textContent = CONFIG.levels[level - 1];
+    } else {
+      marker.setAttribute("aria-valuetext", "Not set. Drag the marker or use the arrow keys.");
+      chosenEl.textContent = CONFIG.startPrompt;
+    }
+  }
+
+  function setLevel(v, commit) {
+    const next = Math.max(1, Math.min(n, v));
+    if (commit) isSet = true;
+    level = next;
+    place();
+  }
+
+  /* --- Pointer: drag the marker, or tap anywhere on the track --- */
+
+  function levelFromX(clientX) {
+    const r = line.getBoundingClientRect();
+    if (!r.width) return level;
+    const ratio = (clientX - r.left) / r.width;
+    return Math.round(ratio * (n - 1)) + 1;
+  }
+
+  let dragging = false;
+
+  function onDown(e) {
+    if (locked) return;
+    dragging = true;
+    marker.classList.add("dragging");
+    marker.focus();
+    setLevel(levelFromX(e.clientX), true);
+    if (marker.setPointerCapture && e.pointerId !== undefined) {
+      try { marker.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!dragging || locked) return;
+    setLevel(levelFromX(e.clientX), true);
+    e.preventDefault();
+  }
+
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    marker.classList.remove("dragging");
+  }
+
+  rail.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+
+  /* --- Keyboard: the single-pointer alternative WCAG 2.2 asks for --- */
+
+  marker.addEventListener("keydown", function (e) {
+    if (locked) return;
+    let handled = true;
+    switch (e.key) {
+      case "ArrowRight": case "ArrowUp":   setLevel(level + 1, true); break;
+      case "ArrowLeft":  case "ArrowDown": setLevel(level - 1, true); break;
+      case "Home":                          setLevel(1, true); break;
+      case "End":                           setLevel(n, true); break;
+      case "PageUp":                        setLevel(level + 2, true); break;
+      case "PageDown":                      setLevel(level - 2, true); break;
+      default: handled = false;
+    }
+    if (handled) e.preventDefault();
+  });
+
+  submitBtn.addEventListener("click", function () {
+    if (!isSet) {
+      chosenEl.textContent = "Set the marker first.";
+      marker.focus();
+      return;
+    }
+
+    const label = CONFIG.levels[level - 1];
+
+    if (CONFIG.mode === "start") {
+      writeAnswer({ level: level, label: label, at: new Date().toISOString() });
+      resultEl.textContent = CONFIG.msgRecorded;
+    } else if (!earlier || !earlier.level) {
+      resultEl.textContent = CONFIG.endNoData;
+    } else {
+      const tpl = level > earlier.level ? CONFIG.endUp
+                : level < earlier.level ? CONFIG.endDown
+                : CONFIG.endSame;
+      resultEl.textContent = tpl
+        .replace("{before}", earlier.label)
+        .replace("{now}", label);
+      writeAnswer({ level: earlier.level, label: earlier.label,
+                    endLevel: level, endLabel: label,
+                    at: new Date().toISOString() });
+    }
+
+    locked = true;
+    marker.setAttribute("aria-disabled", "true");
+    submitBtn.hidden = true;
+    changeBtn.hidden = false;
+    resultEl.setAttribute("tabindex", "-1");
+    resultEl.focus();
+  });
+
+  changeBtn.addEventListener("click", function () {
+    locked = false;
+    marker.removeAttribute("aria-disabled");
+    resultEl.textContent = "";
+    resultEl.removeAttribute("tabindex");
+    changeBtn.hidden = true;
+    submitBtn.hidden = false;
+    marker.focus();
+  });
+
+  place();
+})();
+</script>
+</body>
+</html>
