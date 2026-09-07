@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confidence check</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+
+   Use the SAME file twice. Set mode to "start" on the opening page
+   and "end" on the closing page. The end version marks where the
+   learner started and tells them how they've moved.
+   ============================================================ */
+const CONFIG = {
+  mode: "start",          /* "start" or "end" */
+
+  question: "",           /* heading lives in the Create text field above */
+  hint:     "",
+
+  accessibleName: "How confident do you feel in your ability to support someone experiencing a mental health concern or emotional distress? Five levels, from not at all confident to very confident.",
+
+  levels: [
+    "Not at all confident",
+    "Slightly confident",
+    "Moderately confident",
+    "Confident",
+    "Very confident"
+  ],
+
+  idlePrompt: "Step up or down to your answer.",
+  downLabel:  "Less confident",
+  upLabel:    "More confident",
+
+  buttonLabel: "Submit",
+  changeLabel: "Change my answer",
+  msgRecorded: "Thanks, that\u2019s noted.",
+
+  endUp:     "You started this course at \u201c{before}\u201d. You\u2019re now at \u201c{now}\u201d.",
+  endSame:   "You started this course at \u201c{before}\u201d and you\u2019re still there. Worth sitting with \u2014 confidence tends to shift after you\u2019ve used something, not after you\u2019ve read about it.",
+  endDown:   "You started at \u201c{before}\u201d and you\u2019re now at \u201c{now}\u201d. Learning what this actually asks of you can make you less sure. That isn\u2019t a step backwards.",
+  endNoData: "No earlier answer found on this device, so there\u2019s nothing to compare against this time."
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:    #F6F5F2;
+  --ink:      #17242E;
+  --ink-soft: #4A5964;
+  --sel:      #2F6F7E;   /* the learner's level */
+  --empty:    #7E8891;   /* outline of an unreached level */
+  --track:    #DEDCD5;
+  --before:   #A0522D;   /* where they started */
+  --focus:    #17242E;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 52rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(0.9rem, 2.5vw, 1.75rem) clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.8rem, 2.4vw, 1.2rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+
+.prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.visible-heading {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 600; line-height: 1.2; letter-spacing: -0.01em;
+  max-width: 38ch;
+}
+
+.hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
+
+/* ---------- Stepper ----------
+   Two controls and a reading. You arrive at your answer one press at
+   a time rather than picking it off a row. */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 2.5vw, 1.4rem);
+}
+
+.nudge {
+  flex: 0 0 auto;
+  width: 3rem; height: 3rem;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.nudge:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+.nudge:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+/* Kept focusable at the ends so nobody's tab order changes underneath
+   them — it just stops responding and says why. */
+.nudge[aria-disabled="true"] { opacity: 0.35; cursor: default; }
+.nudge[aria-disabled="true"]:hover { background: transparent; color: var(--ink); }
+
+.dial { flex: 1 1 auto; min-width: 0; }
+
+/* Five segments that fill as you step up. Each is a little longer
+   than the last, so the scale ascends without resorting to bar
+   heights. */
+.segments { display: flex; gap: 0.35rem; align-items: center; }
+
+.seg {
+  flex-grow: 1;
+  flex-basis: 0;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 2px solid var(--empty);
+  transition: background 220ms ease, border-color 220ms ease;
+}
+
+.seg:nth-child(1) { flex-grow: 1;   min-width: 1.1rem; }
+.seg:nth-child(2) { flex-grow: 1.7; min-width: 1.4rem; }
+.seg:nth-child(3) { flex-grow: 2.4; min-width: 1.7rem; }
+.seg:nth-child(4) { flex-grow: 3.1; min-width: 2rem; }
+.seg:nth-child(5) { flex-grow: 3.8; min-width: 2.3rem; }
+
+.seg.on { background: var(--sel); border-color: var(--sel); }
+
+/* Where they started */
+.seg.was {
+  position: relative;
+}
+.seg.was::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 0.3rem); left: 50%;
+  width: 0.5rem; height: 0.5rem;
+  border-radius: 50%;
+  background: var(--before);
+  transform: translateX(-50%);
+}
+
+.ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.76em;
+  color: var(--ink-soft);
+}
+
+.reading {
+  margin: 0.6rem 0 0;
+  min-height: 1.6em;
+  font-weight: 600;
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+  line-height: 1.2;
+}
+
+.counter {
+  margin: 0.15rem 0 0;
+  font-size: 0.85em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend {
+  margin: 0; font-size: 0.85em; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.legend i {
+  width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  background: var(--before); flex: 0 0 auto;
+}
+
+.result { margin: 0; max-width: 54ch; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+button.action {
+  font: inherit; font-weight: 600;
+  color: var(--paper); background: var(--ink);
+  border: 2px solid var(--ink); border-radius: 0.3rem;
+  padding: 0.6rem 1.2rem; min-height: 2.6rem; cursor: pointer;
+}
+
+button.action.secondary { color: var(--ink); background: transparent; }
+button.action:hover { opacity: 0.88; }
+button.action:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+@media (prefers-contrast: more) {
+  .seg { border-color: var(--ink); }
+  .seg.on { background: var(--ink); }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
+  </fieldset>
+
+  <div class="stepper">
+    <button type="button" class="nudge" id="down" aria-describedby="reading">
+      <span aria-hidden="true">&minus;</span>
+      <span class="sr-only" id="downSr"></span>
+    </button>
+
+    <div class="dial">
+      <div class="segments" id="segments" aria-hidden="true"></div>
+      <div class="ends" aria-hidden="true">
+        <span id="endLow"></span>
+        <span id="endHigh"></span>
+      </div>
+      <p class="reading" id="reading" role="status"></p>
+      <p class="counter" id="counter" aria-hidden="true"></p>
+    </div>
+
+    <button type="button" class="nudge" id="up" aria-describedby="reading">
+      <span aria-hidden="true">+</span>
+      <span class="sr-only" id="upSr"></span>
+    </button>
+  </div>
+
+  <p class="legend" id="legend" hidden><i></i><span>Where you started</span></p>
+  <p class="result" id="result"></p>
+
+  <div class="actions">
+    <button type="button" class="action" id="submit"></button>
+    <button type="button" class="action secondary" id="change" hidden></button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const KEY = "fifa-confidence-v1";
+
+  const segsEl   = document.getElementById("segments");
+  const readEl   = document.getElementById("reading");
+  const countEl  = document.getElementById("counter");
+  const downBtn  = document.getElementById("down");
+  const upBtn    = document.getElementById("up");
+  const resultEl = document.getElementById("result");
+  const legendEl = document.getElementById("legend");
+  const submitBtn= document.getElementById("submit");
+  const changeBtn= document.getElementById("change");
+  const hint     = document.getElementById("hint");
+
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+  document.getElementById("downSr").textContent = CONFIG.downLabel;
+  document.getElementById("endLow").textContent  = CONFIG.levels[0];
+  document.getElementById("endHigh").textContent = CONFIG.levels[CONFIG.levels.length - 1];
+  document.getElementById("upSr").textContent = CONFIG.upLabel;
+  submitBtn.textContent = CONFIG.buttonLabel;
+  changeBtn.textContent = CONFIG.changeLabel;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) { visibleHeading.textContent = CONFIG.question; visibleHeading.hidden = false; }
+  if (CONFIG.hint) { hint.textContent = CONFIG.hint; hint.hidden = false; }
+
+  const n = CONFIG.levels.length;
+  const segs = [];
+
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement("span");
+    s.className = "seg";
+    segsEl.append(s);
+    segs.push(s);
+  }
+
+  function readEarlier() {
+    try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; }
+    catch (e) { return null; }
+  }
+  function writeAnswer(o) {
+    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+  }
+
+  const earlier = CONFIG.mode === "end" ? readEarlier() : null;
+  if (earlier && earlier.level && segs[earlier.level - 1]) {
+    segs[earlier.level - 1].classList.add("was");
+    legendEl.hidden = false;
+  }
+
+  let level = 0;        /* 0 means they haven't answered yet */
+  let locked = false;
+
+  function paint() {
+    segs.forEach(function (s, i) { s.classList.toggle("on", i < level); });
+
+    if (level === 0) {
+      readEl.textContent = CONFIG.idlePrompt;
+      countEl.textContent = "";
+    } else {
+      readEl.textContent = CONFIG.levels[level - 1];
+      countEl.textContent = "Level " + level + " of " + n;
+    }
+
+    downBtn.setAttribute("aria-disabled", String(locked || level <= 1));
+    upBtn.setAttribute("aria-disabled", String(locked || level >= n));
+  }
+
+  function step(by) {
+    if (locked) return;
+    /* First press starts at the bottom rather than jumping to the
+       middle, so nobody is nudged toward an answer they didn't give. */
+    const next = level === 0 ? (by > 0 ? 1 : 1) : level + by;
+    if (next < 1 || next > n) return;
+    level = next;
+    paint();
+  }
+
+  upBtn.addEventListener("click", function () { step(1); });
+  downBtn.addEventListener("click", function () { step(-1); });
+
+  submitBtn.addEventListener("click", function () {
+    if (level === 0) {
+      readEl.textContent = "Choose a level first.";
+      upBtn.focus();
+      return;
+    }
+
+    const label = CONFIG.levels[level - 1];
+
+    if (CONFIG.mode === "start") {
+      writeAnswer({ level: level, label: label, at: new Date().toISOString() });
+      resultEl.textContent = CONFIG.msgRecorded;
+    } else if (!earlier || !earlier.level) {
+      resultEl.textContent = CONFIG.endNoData;
+    } else {
+      const tpl = level > earlier.level ? CONFIG.endUp
+                : level < earlier.level ? CONFIG.endDown
+                : CONFIG.endSame;
+      resultEl.textContent = tpl
+        .replace("{before}", earlier.label)
+        .replace("{now}", label);
+      writeAnswer({ level: earlier.level, label: earlier.label,
+                    endLevel: level, endLabel: label,
+                    at: new Date().toISOString() });
+    }
+
+    locked = true;
+    paint();
+    submitBtn.hidden = true;
+    changeBtn.hidden = false;
+    resultEl.setAttribute("tabindex", "-1");
+    resultEl.focus();
+  });
+
+  changeBtn.addEventListener("click", function () {
+    locked = false;
+    resultEl.textContent = "";
+    resultEl.removeAttribute("tabindex");
+    changeBtn.hidden = true;
+    submitBtn.hidden = false;
+    paint();
+    upBtn.focus();
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>
