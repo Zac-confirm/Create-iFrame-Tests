@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embed diagnostic</title>
+<style>
+:root {
+  --paper: #F6F5F2; --ink: #17242E; --ink-soft: #4A5964;
+  --good: #1F6B4A; --bad: #8A3A22; --hairline: #C8CBCB;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font); font-size: 0.9375rem; line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+.stage { max-width: 52rem; margin: 0 auto; padding: 1rem 1.1rem 1.5rem; }
+h1 { margin: 0 0 0.15rem; font-size: 1.15rem; font-weight: 600; }
+.sub { margin: 0 0 1rem; color: var(--ink-soft); font-size: 0.88em; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+th { width: 34%; font-weight: 600; font-size: 0.9em; }
+td { font-family: var(--mono); font-size: 0.82em; word-break: break-all; }
+.yes { color: var(--good); font-weight: 700; }
+.no  { color: var(--bad);  font-weight: 700; }
+.verdict { margin: 1rem 0 0; padding: 0.75rem 0.85rem; border: 2px solid var(--ink); border-radius: 0.35rem; }
+.verdict strong { display: block; margin-bottom: 0.25rem; }
+button {
+  font: inherit; font-weight: 600; color: var(--paper); background: var(--ink);
+  border: 2px solid var(--ink); border-radius: 0.3rem;
+  padding: 0.6rem 1.2rem; min-height: 2.6rem; cursor: pointer; margin-top: 0.9rem;
+}
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.status { margin: 0.5rem 0 0; min-height: 1.4em; color: var(--ink-soft); font-size: 0.88em; }
+</style>
+</head>
+<body>
+<main class="stage">
+  <h1>Embed diagnostic</h1>
+  <p class="sub">What this iframe can see from inside the course. Drop it on a page, publish, open the published course, then press Copy and paste the result back to Zac.</p>
+
+  <table id="out"></table>
+
+  <div class="verdict" id="verdict"></div>
+
+  <button type="button" id="copy">Copy results</button>
+  <p class="status" id="status" role="status"></p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const rows = [];
+  function add(label, value, flag) { rows.push({ label: label, value: value, flag: flag }); }
+
+  /* --- Where are we, and who launched us --- */
+  add("This iframe URL", window.location.href);
+
+  const qs = window.location.search;
+  add("Query string passed in", qs || "(none)", qs ? "yes" : "no");
+
+  if (qs) {
+    new URLSearchParams(qs).forEach(function (v, k) { add("  param: " + k, v); });
+  }
+
+  add("document.referrer", document.referrer || "(empty)", document.referrer ? "yes" : "no");
+
+  /* Ancestor origins is the most reliable way to see the parent chain */
+  let anc = "(not supported in this browser)";
+  try {
+    if (window.location.ancestorOrigins && window.location.ancestorOrigins.length) {
+      anc = Array.prototype.join.call(window.location.ancestorOrigins, ", ");
+    } else if (window.location.ancestorOrigins) {
+      anc = "(empty - not framed?)";
+    }
+  } catch (e) { anc = "(blocked)"; }
+  add("Ancestor origins", anc);
+
+  add("Is it actually framed", window.self !== window.top ? "yes" : "NO - open the published course, not the file", window.self !== window.top ? "yes" : "no");
+  add("Frame depth", String(depth()));
+
+  function depth() {
+    let d = 0, w = window;
+    try { while (w !== w.parent) { d++; w = w.parent; if (d > 10) break; } } catch (e) {}
+    return d;
+  }
+
+  /* --- Can we reach the parent at all? --- */
+  let parentUrl = "(blocked by cross-origin policy)", parentReadable = "no";
+  try {
+    const u = window.parent.location.href;
+    if (u) { parentUrl = u; parentReadable = "yes"; }
+  } catch (e) { /* expected when cross-origin */ }
+  add("Parent URL readable", parentUrl, parentReadable);
+
+  let topUrl = "(blocked by cross-origin policy)";
+  try { topUrl = window.top.location.href; } catch (e) {}
+  add("Top window URL readable", topUrl);
+
+  /* --- Storage, needed if we pair answers without a learner ID --- */
+  let store = "blocked";
+  try {
+    localStorage.setItem("__probe", "1");
+    localStorage.removeItem("__probe");
+    store = "available";
+  } catch (e) { store = "blocked (private mode or policy)"; }
+  add("localStorage", store, store === "available" ? "yes" : "no");
+
+  let cookies = "blocked";
+  try {
+    document.cookie = "__probe=1;SameSite=None;Secure";
+    cookies = document.cookie.indexOf("__probe") > -1 ? "available" : "blocked (third-party cookies off)";
+  } catch (e) {}
+  add("Cookies in this frame", cookies, cookies === "available" ? "yes" : "no");
+
+  /* --- Does the parent talk to us? --- */
+  add("postMessage from parent", "listening… (updates below if anything arrives)");
+
+  add("User agent", navigator.userAgent);
+  add("Viewport", window.innerWidth + " x " + window.innerHeight);
+
+  /* --- Render --- */
+  const out = document.getElementById("out");
+  function render() {
+    out.innerHTML = rows.map(function (r) {
+      const cls = r.flag === "yes" ? ' class="yes"' : r.flag === "no" ? ' class="no"' : "";
+      return "<tr><th>" + esc(r.label) + "</th><td" + cls + ">" + esc(r.value) + "</td></tr>";
+    }).join("");
+
+    const identified = qs || (document.referrer && document.referrer.indexOf("=") > -1);
+    const v = document.getElementById("verdict");
+    v.innerHTML = identified
+      ? "<strong>Something identifying came through.</strong> There are parameters in the URL or referrer worth looking at — a learner ID may be reachable, which would make properly tracked xAPI possible."
+      : "<strong>No learner identity reached this frame.</strong> No query string and nothing useful in the referrer, so the iframe has no way of knowing who is taking the course. Anonymous paired answers via storage would still work if localStorage shows as available above.";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  /* If Elucidat ever posts anything in, capture it */
+  window.addEventListener("message", function (e) {
+    add("postMessage received from " + e.origin, typeof e.data === "string" ? e.data : JSON.stringify(e.data));
+    render();
+  });
+
+  render();
+
+  document.getElementById("copy").addEventListener("click", function () {
+    const text = rows.map(function (r) { return r.label + ": " + r.value; }).join("\n");
+    const done = function (ok) {
+      document.getElementById("status").textContent =
+        ok ? "Copied. Paste it back to Zac." : "Couldn't copy — select the table and copy manually.";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () { legacy(text, done); });
+    } else { legacy(text, done); }
+  });
+
+  function legacy(text, done) {
+    try {
+      const t = document.createElement("textarea");
+      t.value = text; t.style.position = "absolute"; t.style.left = "-9999px";
+      document.body.appendChild(t); t.select();
+      const ok = document.execCommand("copy"); t.remove(); done(ok);
+    } catch (e) { done(false); }
+  }
+})();
+</script>
+</body>
+</html>
