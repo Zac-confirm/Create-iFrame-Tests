@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is this player carrying?</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+   Placeholder scenario and factors. Replace with the real ones
+   from the FIFA source material.
+   ============================================================ */
+const CONFIG = {
+  /* Heading, scenario and hint now live in the Create text fields
+     above the iframe. Leave these empty to keep them there; put text
+     in them only if you want it inside the component instead. */
+  heading:  "",
+  scenario: "",
+  hint:     "",
+
+  /* Never displayed. Names the component for screen readers, since
+     the visible heading is outside the iframe. */
+  accessibleName: "What is this player carrying? Select the pressures and protective factors that apply.",
+
+  pressureLegend:   "Pressures",
+  protectiveLegend: "Protective factors",
+
+  /* Keep these SHORT — two or three words. They sit in two columns
+     at every screen width, so long labels break the layout. */
+  pressures: [
+    "Living away from home",
+    "Contract decision due",
+    "Recent injury",
+    "Online abuse"
+  ],
+
+  protective: [
+    "A trusted adult",
+    "Family contact",
+    "Friends outside football",
+    "Somewhere settled to live"
+  ],
+
+  /* Wording for each balance state. Never a score. */
+  stateEmpty:      "Nothing selected yet.",
+  stateHeavy:      "Weighted heavily toward pressure.",
+  stateTipping:    "Weighted toward pressure.",
+  stateEven:       "Pressures and protective factors roughly even.",
+  stateSteadier:   "Protective factors are carrying more of the weight.",
+
+  /* Closing text now lives in the Create text field below the iframe.
+     Leave empty to keep it there; add text only if you want it inside
+     the component instead. */
+  closing: ""
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:     #FFFFFF;   /* White */
+  --ink:       #004D8C;   /* all text — the theme's white-background pairing.
+                             Swap to #4D4F53 if course body copy is dark grey. */
+  --ink-soft:  #4D4F53;   /* FIFA Dark Grey — secondary text */
+  --button:    #12355E;   /* matches the theme button colour exactly */
+  --pressure:  #8A1A67;   /* the weight stacking up — FIFA Purple */
+  --protect:   #00693C;   /* what steadies it — FIFA Dark Green */
+  --neutral:   #8D9093;   /* FIFA Silver */
+  --hairline:  #B5B9BB;   /* FIFA Grey — framing only; the checkbox carries state */
+  --focus:     #12355E;
+
+  --font: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 48rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(0.85rem, 2.5vw, 1.4rem) clamp(0.9rem, 3vw, 2rem);
+
+  /* Fill whatever height the iframe gives us. The balance takes up the
+     slack, so the component fits a tall frame or a short one. */
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.heading {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.012em;
+  max-width: 28ch;
+}
+
+.scenario {
+  margin: 0.55rem 0 0;
+  max-width: 58ch;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.9em;
+  color: var(--ink-soft);
+  max-width: 58ch;
+}
+
+/* ---------- The balance ---------- */
+
+.balance {
+  margin: 0;
+  padding: 0 0 clamp(0.7rem, 2vw, 1.1rem);
+  border-bottom: 1px solid var(--hairline);
+
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.balance svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: clamp(6.5rem, 26vw, 8rem);
+  min-height: 3.25rem;
+  flex: 1 1 auto;
+  margin: 0 auto;
+}
+
+.beam {
+  transform-origin: 160px 54px;
+  transition: transform 520ms cubic-bezier(.32,.72,.3,1);
+}
+
+.beam-bar { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+
+.hang { transition: transform 520ms cubic-bezier(.32,.72,.3,1); }
+#hangPressure { transform-origin: 52px 54px; }
+#hangProtect  { transform-origin: 268px 54px; }
+
+.pan {
+  stroke-width: 3.5;
+  fill: none;
+  transition: fill 320ms ease, stroke 320ms ease;
+}
+
+.pan-pressure { stroke: var(--pressure); }
+.pan-protect  { stroke: var(--protect); }
+
+.pan.loaded.pan-pressure { fill: var(--pressure); }
+.pan.loaded.pan-protect  { fill: var(--protect); }
+
+.stand { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
+.fulcrum { fill: var(--ink); }
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.9rem;
+  margin: 0.55rem 0 0;
+}
+
+.readout {
+  margin: 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+
+
+/* ---------- Factor lists ---------- */
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.5rem, 2.5vw, 1.75rem);
+  margin: clamp(0.9rem, 3vw, 1.6rem) 0 0;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0 0 0.45rem;
+  font-weight: 600;
+  font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1.05rem);
+}
+
+.group-pressure legend { color: var(--pressure); }
+.group-protect  legend { color: var(--protect); }
+
+.factor {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0.45rem 0.45rem 0.4rem;
+  margin: 0 0 0.3rem;
+  border: 2px solid var(--hairline);
+  border-radius: 0.35rem;
+  background: transparent;
+  cursor: pointer;
+  min-height: 2.25rem;   /* 36px — clears the 24px WCAG 2.2 minimum */
+  line-height: 1.3;
+}
+
+.factor input {
+  flex: 0 0 auto;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.group-pressure .factor input { accent-color: var(--pressure); }
+.group-protect  .factor input { accent-color: var(--protect); }
+
+.group-pressure .factor:has(input:checked) { border-color: var(--pressure); }
+.group-protect  .factor:has(input:checked) { border-color: var(--protect); }
+
+.factor:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Closing + reset ---------- */
+
+.closing {
+  margin: clamp(0.8rem, 2.5vw, 1.1rem) 0 0;
+  padding-top: clamp(0.7rem, 2vw, 0.95rem);
+  font-size: 0.9em;
+  border-top: 2px solid var(--ink);
+  max-width: 62ch;
+}
+
+
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--button);
+  background: transparent;
+  border: 2px solid var(--button);
+  border-radius: 32px;      /* pill, matching the theme's corner radius */
+  padding: 0.6rem 1.2rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+}
+
+button:hover { opacity: 0.85; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .factor { border-color: var(--ink); }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <h1 id="srHeading" class="sr-only"></h1>
+  <h2 class="heading" id="heading" hidden></h2>
+  <p class="scenario" id="scenario" hidden></p>
+  <p class="hint" id="hint" hidden></p>
+
+  <div class="balance">
+    <svg viewBox="0 0 320 130" role="img" aria-labelledby="balanceAlt">
+      <title id="balanceAlt">A balance scale. The left pan holds pressures, the right pan holds protective factors.</title>
+
+      <!-- stand -->
+      <path class="stand" d="M160 58 V108 M132 112 H188"/>
+      <circle class="fulcrum" cx="160" cy="54" r="7"/>
+
+      <!-- beam -->
+      <g class="beam" id="beam">
+        <path class="beam-bar" d="M52 54 H268"/>
+
+        <g class="hang" id="hangPressure">
+          <path class="beam-bar" d="M52 54 V70"/>
+          <circle class="pan pan-pressure" id="panPressure" cx="52" cy="83" r="13"/>
+        </g>
+
+        <g class="hang" id="hangProtect">
+          <path class="beam-bar" d="M268 54 V70"/>
+          <circle class="pan pan-protect" id="panProtect" cx="268" cy="83" r="13"/>
+        </g>
+      </g>
+    </svg>
+
+    <div class="statusbar">
+      <p class="readout" id="readout" role="status"></p>
+      <button type="button" id="reset">Clear all</button>
+    </div>
+  </div>
+
+  <div class="columns">
+    <fieldset class="group-pressure">
+      <legend id="legendPressure"></legend>
+      <div id="listPressure"></div>
+    </fieldset>
+
+    <fieldset class="group-protect">
+      <legend id="legendProtect"></legend>
+      <div id="listProtect"></div>
+    </fieldset>
+  </div>
+
+  <p class="closing" id="closing" hidden></p>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Hidden name always present; visible text only if configured. */
+  document.getElementById("srHeading").textContent = CONFIG.accessibleName;
+
+  [["heading", CONFIG.heading],
+   ["scenario", CONFIG.scenario],
+   ["hint", CONFIG.hint]].forEach(function (pair) {
+    if (pair[1]) {
+      const el = document.getElementById(pair[0]);
+      el.textContent = pair[1];
+      el.hidden = false;
+    }
+  });
+
+  if (CONFIG.closing) {
+    const closingEl = document.getElementById("closing");
+    closingEl.textContent = CONFIG.closing;
+    closingEl.hidden = false;
+  }
+  document.getElementById("legendPressure").textContent = CONFIG.pressureLegend;
+  document.getElementById("legendProtect").textContent  = CONFIG.protectiveLegend;
+
+  const beam     = document.getElementById("beam");
+  const panP     = document.getElementById("panPressure");
+  const panR     = document.getElementById("panProtect");
+  const hangP    = document.getElementById("hangPressure");
+  const hangR    = document.getElementById("hangProtect");
+  const readout  = document.getElementById("readout");
+
+  function build(items, container, prefix) {
+    items.forEach(function (text, i) {
+      const label = document.createElement("label");
+      label.className = "factor";
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.id = prefix + i;
+
+      const span = document.createElement("span");
+      span.textContent = text;
+
+      label.append(input, span);
+      container.append(label);
+      input.addEventListener("change", update);
+    });
+  }
+
+  build(CONFIG.pressures,  document.getElementById("listPressure"), "p");
+  build(CONFIG.protective, document.getElementById("listProtect"),  "r");
+
+  function countChecked(sel) {
+    return document.querySelectorAll(sel + " input:checked").length;
+  }
+
+  function update() {
+    const p = countChecked("#listPressure");
+    const r = countChecked("#listProtect");
+    const diff = p - r;
+
+    /* Tip the beam. Capped, so it never bottoms out into
+       "this player is beyond help". */
+    const angle = Math.max(-16, Math.min(16, -diff * 4.5));
+    beam.style.transform = "rotate(" + angle + "deg)";
+
+    /* Counter-rotate so the pans hang vertically, as real ones do */
+    hangP.style.transform = "rotate(" + (-angle) + "deg)";
+    hangR.style.transform = "rotate(" + (-angle) + "deg)";
+
+    panP.classList.toggle("loaded", p > 0);
+    panR.classList.toggle("loaded", r > 0);
+
+    let state;
+    if (p === 0 && r === 0)   state = CONFIG.stateEmpty;
+    else if (diff >= 3)       state = CONFIG.stateHeavy;
+    else if (diff >= 1)       state = CONFIG.stateTipping;
+    else if (Math.abs(diff) <= 1) state = CONFIG.stateEven;
+    else                      state = CONFIG.stateSteadier;
+
+    readout.textContent = (p === 0 && r === 0)
+      ? state
+      : state + "  " + p + (p === 1 ? " pressure" : " pressures") +
+        ", " + r + " protective.";
+  
+  }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    document.querySelectorAll(".factor input").forEach(function (i) {
+      i.checked = false;
+    });
+    update();
+    document.querySelector("#listPressure input").focus();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

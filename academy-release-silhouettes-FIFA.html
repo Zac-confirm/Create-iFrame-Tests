@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How many academy players reach professional football?</title>
+
+<script>
+/* ============================================================
+   CONFIG — edit this block only.
+   ============================================================ */
+const CONFIG = {
+  /* Heading and hint now live in the Create text fields above the
+     iframe. Leave these empty to keep them there; put text in them
+     only if you want it inside the component instead. */
+  question: "",
+  hint:     "",
+
+  /* Never displayed. Gives the ten radios an accessible name for
+     screen readers, since the visible heading is outside the iframe. */
+  accessibleName: "Ten players join a top academy at 13. How many go on to play professional football at any level? Select how many you think make it, then Submit.",
+
+  buttonLabel: "Submit",
+  resetLabel:  "Start over",
+
+  answer: 1,
+  total: 10,
+
+  resultHeading: "One in ten.",
+  resultBody:    "Around one in ten players at LaLiga academies reached professional football at any level. The other nine were released, often between 16 and 18 \u2014 when football had been most of their life.",
+  resultClose:   "Those nine don\u2019t disappear. Many stay in the game \u2014 some are the people you work with.",
+
+};
+</script>
+
+<style>
+/* ============================================================
+   BRAND TOKENS — swap for FIFA Medical Network colours.
+   ============================================================ */
+:root {
+  --paper:     #FFFFFF;   /* White */
+  --ink:       #004D8C;   /* all text — the theme's white-background pairing.
+                             Swap to #4D4F53 if course body copy is dark grey. */
+  --ink-soft:  #4D4F53;   /* FIFA Dark Grey — secondary text */
+  --button:    #12355E;   /* matches the theme button colour exactly */
+  --guess:     #004D8C;   /* the learner's selection — course blue */
+  --neutral:   #8D9093;   /* a player — FIFA Silver */
+  --released:  #8D9093;   /* outline, once released */
+  --focus:     #12355E;
+
+  --font: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(0.9375rem, 0.92rem + 0.1vw, 1rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.stage {
+  max-width: 52rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(0.9rem, 2.5vw, 1.75rem) clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.75rem, 2.5vw, 1.25rem);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Question ---------- */
+
+.prompt { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.visible-heading {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: 34ch;
+}
+
+.hint { margin: 0.5rem 0 0; color: var(--ink-soft); }
+
+/* Once revealed, any visible heading is redundant — the result carries
+   it. The hidden label stays, so the group keeps its accessible name. */
+.revealed .visible-heading,
+.revealed .hint { display: none; }
+
+/* ---------- The ten figures ---------- */
+
+.squad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: clamp(0.3rem, 1.2vw, 0.7rem);
+}
+
+.figure {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(20% - 0.6rem);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.35rem 0.1rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: width 520ms cubic-bezier(.34,.62,.28,1) var(--move-delay, 0ms);
+}
+
+@media (min-width: 30rem) {
+  .figure { width: calc(10% - 0.7rem); }
+}
+
+.figure input {
+  position: absolute;
+  opacity: 0;
+  width: 100%; height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.figure svg {
+  width: 100%;
+  height: auto;
+  max-height: clamp(3rem, 10vw, 4.75rem);
+  display: block;
+  transition: max-height 520ms cubic-bezier(.34,.62,.28,1) var(--move-delay, 0ms);
+}
+
+.figure .body {
+  fill: var(--neutral);
+  stroke: var(--neutral);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  transition: fill 240ms ease, stroke 240ms ease;
+}
+
+.figure.in-guess .body {
+  fill: var(--guess);
+  stroke: var(--guess);
+}
+
+/* After the reveal the one who stays is unchanged. Only the nine
+   change, and that absence is the point. */
+.figure.released .body {
+  fill: none;
+  stroke: var(--released);
+}
+
+.figure:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Released figures empty out, shrink and slide over in sequence,
+   each one a beat after the last. */
+.squad.revealing .figure.released {
+  --move-delay: var(--stagger, 0ms);
+}
+
+.squad.revealing .figure.released .body {
+  transition-delay: var(--stagger, 0ms);
+}
+
+.tally {
+  margin: 0;
+  min-height: 1.45em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Revealed layout ----------
+   The figures compact and the text takes the remaining width, so the
+   reveal spends horizontal space instead of growing downwards. */
+
+.revealed .figure.made {
+  order: -1;
+  width: calc(34% - 0.6rem);
+}
+
+.revealed .figure.made svg {
+  max-height: clamp(4.5rem, 15vw, 7.5rem);
+}
+
+.revealed .figure.released {
+  width: calc(13% - 0.6rem);
+}
+
+.revealed .figure.released svg {
+  max-height: clamp(2.25rem, 7vw, 3.5rem);
+}
+
+.reveal-row { display: grid; gap: clamp(0.9rem, 3vw, 1.75rem); }
+
+@media (min-width: 40rem) {
+  .revealed .reveal-row {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: center;
+  }
+}
+
+/* The text fades and rises in after the figures have finished moving,
+   so the eye follows the figures first and the result lands second. */
+.result {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
+.revealed .result {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 420ms ease 360ms, transform 420ms ease 360ms;
+}
+
+/* ---------- Buttons + result ---------- */
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--button);
+  border: 2px solid var(--button);
+  border-radius: 32px;      /* pill, matching the theme's corner radius */
+  padding: 0.6rem 1.2rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+}
+
+button.secondary { color: var(--button); background: transparent; }
+button:hover { opacity: 0.88; }
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+[hidden] { display: none !important; }
+
+.result:focus { outline: none; }
+
+.result:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 6px;
+}
+
+.result h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.35rem, 1.15rem + 0.9vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.result p { max-width: 46ch; margin: 0 0 0.6rem; }
+.result p:last-child { margin-bottom: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .figure.released .body { stroke-width: 4; }
+}
+</style>
+</head>
+
+<body>
+<main class="stage">
+
+  <fieldset class="prompt">
+    <legend id="question" class="sr-only"></legend>
+    <p class="visible-heading" id="visibleHeading" hidden></p>
+    <p class="hint" id="hint" hidden></p>
+  </fieldset>
+
+  <div class="reveal-row">
+    <div class="squad" id="squad" role="radiogroup" aria-labelledby="question"></div>
+
+    <section class="result" id="result" tabindex="-1" hidden aria-labelledby="resultHeading">
+      <h2 id="resultHeading"></h2>
+      <p id="resultBody"></p>
+      <p id="resultClose"></p>
+    </section>
+  </div>
+
+  <p class="tally" id="tally" role="status"></p>
+
+  <div class="actions">
+    <button type="button" id="reveal"></button>
+    <button type="button" id="reset" class="secondary" hidden></button>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const squad     = document.getElementById("squad");
+  const tally     = document.getElementById("tally");
+  const revealBtn = document.getElementById("reveal");
+  const resetBtn  = document.getElementById("reset");
+  const result    = document.getElementById("result");
+  const hint      = document.getElementById("hint");
+
+  /* Hidden label always present; visible heading only if configured. */
+  document.getElementById("question").textContent = CONFIG.accessibleName;
+
+  const visibleHeading = document.getElementById("visibleHeading");
+  if (CONFIG.question) {
+    visibleHeading.textContent = CONFIG.question;
+    visibleHeading.hidden = false;
+  }
+  if (CONFIG.hint) {
+    hint.textContent = CONFIG.hint;
+    hint.hidden = false;
+  }
+  revealBtn.textContent = CONFIG.buttonLabel;
+  resetBtn.textContent  = CONFIG.resetLabel;
+
+  let guess = null;
+  let revealed = false;
+  const figures = [];
+
+  /* Native radios: arrow-key navigation, one tab stop and correct
+     screen-reader semantics all come free. */
+  for (let n = 1; n <= CONFIG.total; n++) {
+    const label = document.createElement("label");
+    label.className = "figure";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "guess";
+    input.value = String(n);
+
+    const text = document.createElement("span");
+    text.className = "sr-only";
+    text.textContent = n === 1 ? "1 player" : n + " players";
+
+    label.innerHTML =
+      '<svg viewBox="0 0 40 78" aria-hidden="true" focusable="false">' +
+        '<circle class="body" cx="20" cy="11" r="8.5"/>' +
+        '<path class="body" d="M20 23c-7.2 0-12.4 4.3-13.3 11.4L4.5 50h5.2l1.3-10.4V74h6.4V56.5h5.2V74h6.4V39.6L30.3 50h5.2l-2.2-15.6C32.4 27.3 27.2 23 20 23z"/>' +
+      '</svg>';
+
+    label.prepend(input);
+    label.append(text);
+    squad.append(label);
+    figures.push(label);
+
+    input.addEventListener("change", function () {
+      guess = n;
+      paintGuess();
+    });
+  }
+
+  function paintGuess() {
+    figures.forEach(function (fig, i) {
+      fig.classList.toggle("in-guess", guess !== null && i < guess);
+    });
+    tally.textContent = guess === null ? "" : guess + " of " + CONFIG.total + " selected";
+  }
+
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+
+    /* Which players remain is drawn at random. It could have been any
+       of them, and the visual should say so. */
+    const remain = new Set();
+    while (remain.size < CONFIG.answer) {
+      remain.add(Math.floor(Math.random() * CONFIG.total));
+    }
+
+    squad.classList.add("revealing");
+    document.body.classList.add("revealed");
+
+    let step = 0;
+    figures.forEach(function (fig, i) {
+      fig.classList.remove("in-guess");
+      if (remain.has(i)) {
+        fig.classList.add("made");
+      } else {
+        fig.style.setProperty("--stagger", (step++ * 60) + "ms");
+        fig.classList.add("released");
+      }
+      fig.querySelector("input").disabled = true;
+    });
+
+    document.getElementById("resultHeading").textContent = CONFIG.resultHeading;
+    document.getElementById("resultBody").textContent    = CONFIG.resultBody;
+    document.getElementById("resultClose").textContent   = CONFIG.resultClose;
+
+    tally.hidden  = true;
+    result.hidden = false;
+    revealBtn.hidden = true;
+    resetBtn.hidden  = false;
+
+    /* Land keyboard and screen-reader users on the outcome rather than
+       leaving them to hunt for what changed. */
+    result.focus();
+  }
+
+  function reset() {
+    revealed = false;
+    guess = null;
+
+    squad.classList.remove("revealing");
+    document.body.classList.remove("revealed");
+
+    figures.forEach(function (fig) {
+      fig.classList.remove("made", "released", "in-guess");
+      fig.style.removeProperty("--stagger");
+      const input = fig.querySelector("input");
+      input.disabled = false;
+      input.checked = false;
+    });
+
+    result.hidden = true;
+    resetBtn.hidden = true;
+    revealBtn.hidden = false;
+    if (CONFIG.hint) hint.hidden = false;
+    tally.hidden = false;
+    tally.textContent = "";
+    figures[0].querySelector("input").focus();
+  }
+
+  revealBtn.addEventListener("click", reveal);
+  resetBtn.addEventListener("click", reset);
+})();
+</script>
+</body>
+</html>
